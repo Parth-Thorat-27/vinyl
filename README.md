@@ -100,8 +100,20 @@ What each part does:
 - **The record** is pressed fresh for every song, with its own grooves, quiet bands between tracks and a matrix number in the run-out. It spins up and brakes with real weight, and the light on its grooves stays put while it turns.
 - **The tonearm** follows the song like a real stylus. Pick it up and drop it anywhere on the record to jump there. The time shows where it will land. When you pause, it lifts off the record.
 - **The strobe marks** on the platter rim light up near the lamp and stand still once the platter is at 33⅓.
-- **The knob** is a real one: knurled metal, a black cap, and only its white dot shows the volume. Turn it, or press it like a button to mute (the dot goes dark).
-- **The theme** takes its colour from the album art: the plinth, the label, the cartridge and the lights.
+- **The knob** is a real one: a knurled brass skirt, a dark cap, and only its cream dot shows the volume. Turn it, or press it like a button to mute (the dot goes dark).
+- **It's warm on purpose:** walnut plinth, brass, amber lamps, and a time readout that glows like an old amber display. Each album still tints the accent, but always a shade of orange, from vermilion to amber.
+
+## The glow
+
+Behind the whole app burns a fireside, drawn live with WebGL. Warm smoke rises and turns gently around the turntable, embers catch on its edges, a hearth glows behind the deck, and sparks drift up.
+
+- **On its own** it follows the player. It's banked and quiet when nothing plays, comes alive when the music starts, gets brighter as you turn the volume up, and flares each time a record drops onto the platter or you drop the needle.
+- **Let it hear the music** with the wave button at the top. Browsers don't let a page hear YouTube or Spotify directly, so Vinyl asks first:
+  - **Listen to this tab** (Chrome or Edge on a computer): pick *This tab* and keep *Share tab audio* on.
+  - **Use the microphone**: works when the music plays out loud, not on headphones.
+
+  The bass makes the embers flare and the hearth thump, the mids stir the smoke, and the highs throw sparks. Nothing is recorded or sent anywhere. The sound is only measured on your device, and only while listening is on. Press the button again to stop.
+- It renders at reduced resolution, drops it further on slow devices, and holds still if your system asks for reduced motion.
 
 ## Controls
 

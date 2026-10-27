@@ -270,6 +270,7 @@ function armUp(e, cancelled = false) {
   const p = cancelled ? null : progressAt(a), E = eng(), d = E.ready() ? E.duration() : 0;
   if (p == null || !d) { seeking = false; deckWake(); return; } // let go off the record: it swings back
   Deck.hold = { angle: a, until: performance.now() + 2500 };
+  glowKick(0.6);
   const at = p * d;
   if (phase === 'playing' || phase === 'loading' || roomIsGuest()) userSeek(at);
   else playIndex(S.index, true, at);
@@ -322,7 +323,7 @@ function deckSwap(prev, next) {
   if (prev) deckFly(prev, disc, sleeveCircle(prev) || offstage, { out: true, duration: 480 });
   if (next) {
     Deck.el.classList.add('swapping');
-    const landed = () => { Deck.el.classList.remove('swapping'); Deck.angle = 0; deckWake(); };
+    const landed = () => { Deck.el.classList.remove('swapping'); Deck.angle = 0; glowKick(1); deckWake(); };
     deckFly(next, disc, from || sleeveCircle(next) || offstage, { duration: 780, delay: prev ? 170 : 0 }).finished.then(landed, landed);
   }
   deckWake();

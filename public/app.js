@@ -216,17 +216,19 @@ function hueFromId(id) {
 function applyTheme(c) {
   const st = document.documentElement.style;
   const props = ['--accent', '--accent-2', '--on-accent', '--tint', '--plinth-1', '--plinth-2'];
-  if (!c) { props.forEach((p) => st.removeProperty(p)); $('meta[name=theme-color]').content = '#121014'; return; }
-  const { h: hue } = c;
-  const s = c.gray ? 0.06 : Math.min(0.85, Math.max(0.4, c.s));
+  if (!c) { props.forEach((p) => st.removeProperty(p)); $('meta[name=theme-color]').content = '#110c09'; return; }
+  // Vinyl stays warm: each album still gets its own colour, but always a shade
+  // of orange, from vermilion to amber.
+  const hue = Math.round(14 + (c.h / 360) * 30);
+  const s = c.gray ? 0.7 : Math.min(0.92, Math.max(0.75, c.s + 0.3));
   const pct = (v) => `${Math.round(v * 100)}%`;
-  st.setProperty('--accent', `hsl(${hue} ${pct(s)} ${c.gray ? '80%' : '68%'})`);
-  st.setProperty('--accent-2', `hsl(${hue} ${pct(s)} ${c.gray ? '70%' : '58%'})`);
-  st.setProperty('--on-accent', `hsl(${hue} 40% 10%)`);
+  st.setProperty('--accent', `hsl(${hue} ${pct(s)} 62%)`);
+  st.setProperty('--accent-2', `hsl(${hue} ${pct(s)} 54%)`);
+  st.setProperty('--on-accent', `hsl(${hue} 60% 10%)`);
   st.setProperty('--tint', `hsl(${hue} ${pct(s * 0.5)} 14%)`);
   st.setProperty('--plinth-1', `hsl(${hue} ${pct(s * 0.32)} 23%)`);
   st.setProperty('--plinth-2', `hsl(${hue} ${pct(s * 0.32)} 12%)`);
-  $('meta[name=theme-color]').content = `hsl(${hue} ${pct(s * 0.4)} 10%)`;
+  $('meta[name=theme-color]').content = `hsl(${hue} 35% 7%)`;
 }
 
 let shownArt = null;
@@ -1175,6 +1177,7 @@ selectTab(((t) => (t === 'room' ? 'queue' : t))(store.get('tab', S.queue.length 
 updateNowPlaying();
 deckBoot();
 crateBoot();
+glowBoot();
 
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* offline shell is optional */ });

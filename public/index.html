@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="theme-color" content="#060608">
+  <meta name="theme-color" content="#110c09">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,10 +16,12 @@
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Doto:ROND,wght@0..100,600..900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Doto:ROND,wght@0..100,600..900&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..700,0..100;1,9..144,400..700,0..100&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-phase="idle">
+  <!-- The fireside glow behind everything (glow.js) -->
+  <canvas id="glow" class="glow" aria-hidden="true"></canvas>
 
   <!-- Icon sprite (Material-style paths) and the shared turntable parts -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -47,6 +49,7 @@
     <symbol id="i-group" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></symbol>
     <symbol id="i-phone" viewBox="0 0 24 24"><path d="M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 20h-4v-1h4v1zm3.25-3H6.75V4h10.5v14z"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z"/></symbol>
 
     <defs>
       <linearGradient id="gMetal" x1="0" y1="0" x2="1" y2="0">
@@ -103,11 +106,12 @@
           <circle cx="12" cy="12" r="4" fill="var(--accent)"/>
           <circle cx="12" cy="12" r=".9" fill="#0b0b0d"/>
         </svg>
-        <span class="brand-word">VINYL</span>
+        <span class="brand-word">Vinyl</span>
       </div>
       <div class="top-actions">
         <button class="room-pill" id="roomPill" hidden title="Open the room"><span class="live-dot"></span><span id="roomPillText">Live</span></button>
         <button class="icon-btn sheet-only" data-open="library" title="Library"><svg class="i"><use href="#i-library"/></svg></button>
+        <button class="icon-btn" id="btnListen" title="Let the glow hear the music" aria-pressed="false" hidden><svg class="i"><use href="#i-wave"/></svg></button>
         <button class="icon-btn" id="btnRoom" title="Listen together"><svg class="i"><use href="#i-group"/></svg></button>
         <button class="icon-btn" id="btnVideo" title="Show or hide video (V)" aria-pressed="false"><svg class="i"><use href="#i-video"/></svg></button>
         <button class="icon-btn" id="btnSettings" title="Settings"><svg class="i"><use href="#i-settings"/></svg></button>
@@ -371,6 +375,22 @@
     </div>
   </dialog>
 
+  <dialog id="listenDialog" class="dialog">
+    <div class="dialog-head">
+      <h2>Let the glow hear the music</h2>
+      <button class="icon-btn sm" id="btnCloseListen" aria-label="Close"><svg class="i"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="dialog-body">
+      <p class="muted">Browsers don't let a page hear YouTube or Spotify directly, so on its own the glow follows the player: playing, pausing, the volume and every new record. To make it move with the actual sound, let Vinyl listen.</p>
+      <p class="muted">Nothing is recorded or sent anywhere. The sound is only measured, on this device, while this is on. Tap the same button to stop.</p>
+      <div class="btn-row">
+        <button class="btn primary" id="btnListenTab"><svg class="i"><use href="#i-wave"/></svg>Listen to this tab</button>
+        <button class="btn" id="btnListenMic">Use the microphone</button>
+      </div>
+      <p class="hint">For this tab, pick <b>This tab</b> and keep <b>Share tab audio</b> on. The microphone works when the music plays out loud, not on headphones.</p>
+    </div>
+  </dialog>
+
   <dialog id="roomDialog" class="dialog room-dialog">
     <div class="dialog-head">
       <h2 id="roomDialogTitle">Listen together</h2>
@@ -385,6 +405,7 @@
   <script src="room.js"></script>
   <script src="deck.js"></script>
   <script src="crate.js"></script>
+  <script src="glow.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
