@@ -71,7 +71,7 @@ function crateShow(el) {
   $('.mini-label', p).style.backgroundImage = art ? `url("${art}")` : '';
   $('.cp-title', p).textContent = trackTitle(t);
   $('.cp-artist', p).textContent = trackArtist(t);
-  $('.cp-hint', p).textContent = on ? 'On the turntable' : crateDemo() ? 'Demo record · click to play' : 'Click to put it on';
+  $('.cp-hint', p).hidden = !on; // clicking to put it on goes without saying; only say it's already there
   p.classList.toggle('on-deck', on);
 
   // Beside the crate, level with the sleeve (above it when the crate runs sideways), kept on screen.
