@@ -85,11 +85,23 @@ The `public/` folder is a plain static site. Drag it onto **https://app.netlify.
 - installs as a real app on Android, iOS, Windows and macOS,
 - allows Google and Spotify sign-in: add the new address as another authorized JavaScript origin for Google, and `https://your-site/callback.html` as a Spotify redirect URI.
 
+## The deck
+
+The whole screen is the turntable, built like hardware: a display, tall keys with status lights and one knob.
+
+- **The record** is pressed fresh for every song, with its own grooves, quiet bands between tracks and a matrix number in the run-out. It spins up and brakes with real weight, and the light on its grooves stays put while it turns.
+- **The tonearm** follows the song like a real stylus. Pick it up and drop it anywhere on the record to jump there. The display shows where it will land. When you pause, it lifts off the record.
+- **The strobe marks** on the platter rim light up near the lamp and stand still once the platter is at 33⅓.
+- **The knob** stays a plain circle until you touch it. Hold and turn for volume, tap to mute (the dot turns amber).
+- **The theme** takes its colour from the album art: the label, the cartridge, the lights and the display.
+
 ## Controls
 
 | | |
 |---|---|
 | Tap the record | play / pause |
+| Drag the tonearm onto the record | jump to that point in the song |
+| Hold and turn the knob | volume (tap it to mute, or scroll over it) |
 | Swipe across the turntable | next / previous |
 | `Space` | play / pause |
 | `←` `→` | seek 5 s (`Shift` = prev/next track) |

@@ -237,49 +237,16 @@ async function setArt(t) {
   if (shownArt !== key) return;
   if (!url) {
     img.removeAttribute('href'); deck.classList.add('no-art');
-    $('#bgArt').style.backgroundImage = ''; applyTheme(t ? hueFromId(t.id) : null); return;
+    applyTheme(t ? hueFromId(t.id) : null); return;
   }
   img.setAttribute('href', url); deck.classList.remove('no-art');
-  $('#bgArt').style.backgroundImage = `url("${url}")`;
   // YouTube thumbs get a separate cache entry for the CORS request.
   const c = await extractColor(t.src === 'sp' ? url : thumb(t.id) + '?c=1');
   if (shownArt !== key) return;
   applyTheme(c || hueFromId(t.id));
 }
 
-/* ---------- turntable ---------- */
-(function drawGrooves() {
-  const ns = 'http://www.w3.org/2000/svg', g = $('#grooves');
-  const gaps = [19.5, 24.8, 29.6, 34.2];
-  for (let r = 14.2; r <= 38.4; r += 0.55) {
-    const c = document.createElementNS(ns, 'circle');
-    c.setAttribute('cx', 44); c.setAttribute('cy', 52); c.setAttribute('r', r.toFixed(2));
-    c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-opacity', (0.025 + Math.random() * 0.03).toFixed(3));
-    c.setAttribute('stroke-width', '.2');
-    g.append(c);
-  }
-  for (const r of gaps) {
-    const c = document.createElementNS(ns, 'circle');
-    c.setAttribute('cx', 44); c.setAttribute('cy', 52); c.setAttribute('r', r);
-    c.setAttribute('stroke', '#000'); c.setAttribute('stroke-opacity', '.55'); c.setAttribute('stroke-width', '.45');
-    g.append(c);
-  }
-})();
-
-// Tonearm angles (deg): parked, needle at outer groove, needle at inner groove.
-const ARM_REST = -4, ARM_START = 10, ARM_END = 31;
-let armSlowUntil = 0;
-function updateArm(slow) {
-  let deg = ARM_REST;
-  if (phase !== 'idle' && S.index >= 0) {
-    const E = eng(), d = E.ready() ? E.duration() : 0, c = E.ready() ? E.time() : 0;
-    deg = ARM_START + (ARM_END - ARM_START) * (d > 0 ? Math.min(1, c / d) : 0);
-  }
-  const arm = $('#arm');
-  if (slow) armSlowUntil = Date.now() + 1050;
-  arm.style.transition = slow ? 'transform 1s cubic-bezier(.35,.6,.25,1)' : 'transform .3s linear';
-  arm.style.transform = `rotate(${deg.toFixed(2)}deg)`;
-}
+/* The turntable itself (record, platter, tonearm, knob) lives in deck.js. */
 
 /* ---------- YouTube players ---------- */
 const PS = { UNSTARTED: -1, ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 };
@@ -388,7 +355,7 @@ function setPhase(p) {
       if (!isCurrent(YTE) || st === PS.UNSTARTED || st === PS.CUED) setPhase('idle');
     }, isCurrent(YTE) ? 8000 : 12000);
   }
-  if ((was === 'idle') !== (p === 'idle')) updateArm(true);
+  deckSync();
   if (was !== p) roomNotify();
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = p === 'playing' ? 'playing' : p === 'paused' ? 'paused' : 'none';
 }
@@ -542,12 +509,13 @@ function setVolume(v) {
   S.volume = Math.max(0, Math.min(100, Math.round(v)));
   YTE.volume(S.volume); SPE.volume(S.volume);
   if (S.muted && S.volume > 0) toggleMute(false);
-  setRange($('#vol'), S.volume, 100); persist();
+  setRange($('#vol'), S.volume, 100); knobRender(); persist();
 }
 function toggleMute(force) {
   S.muted = typeof force === 'boolean' ? force : !S.muted;
   YTE.mute(S.muted); SPE.mute(S.muted);
   $('#volIcon').setAttribute('href', S.muted ? '#i-volume-off' : '#i-volume');
+  knobRender();
 }
 function toggleVideo(force) {
   S.showVideo = typeof force === 'boolean' ? force : !S.showVideo;
@@ -611,12 +579,12 @@ function setRange(el, v, max) {
 
 let seeking = false, lastPosSave = 0, lastPosState = 0;
 setInterval(() => {
+  deckSync();
   const E = eng();
   if (S.index < 0 || !E.ready()) return;
   const d = E.duration() || 0, c = Math.min(E.time() || 0, d || Infinity);
   if (!seeking) { setRange($('#seek'), d ? (c / d) * 1000 : 0, 1000); $('#tCur').textContent = fmt(c); }
   $('#tDur').textContent = fmt(d);
-  if (phase !== 'idle' && Date.now() > armSlowUntil) updateArm(false);
   if (phase === 'playing') {
     const now = Date.now();
     if (now - lastPosSave > 4000 && !roomIsGuest()) { lastPosSave = now; S.pos = c; store.set('pos', c); }
@@ -1203,7 +1171,7 @@ spBoot();
 roomBoot();
 selectTab(((t) => (t === 'room' ? 'queue' : t))(store.get('tab', S.queue.length ? 'queue' : 'library')));
 updateNowPlaying();
-updateArm(true);
+deckBoot();
 
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* offline shell is optional */ });

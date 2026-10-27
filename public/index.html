@@ -4,24 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="theme-color" content="#121014">
+  <meta name="theme-color" content="#060608">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Vinyl">
-  <meta name="description" content="A turntable-style player for your YouTube Music.">
+  <meta name="description" content="A turntable for your YouTube Music and Spotify.">
   <title>Vinyl</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Doto:ROND,wght@0..100,600..900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-phase="idle">
 
-  <!-- Icon sprite (Material-style paths) -->
+  <!-- Icon sprite (Material-style paths) and the shared turntable parts -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.6-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14z"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.2"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.2"/></symbol>
@@ -47,167 +47,185 @@
     <symbol id="i-group" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></symbol>
     <symbol id="i-phone" viewBox="0 0 24 24"><path d="M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 20h-4v-1h4v1zm3.25-3H6.75V4h10.5v14z"/></symbol>
+
+    <defs>
+      <linearGradient id="gMetal" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#8d8d94"/>
+        <stop offset=".5" stop-color="#ececf0"/>
+        <stop offset="1" stop-color="#9a9aa1"/>
+      </linearGradient>
+      <linearGradient id="gWeight" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#2a2a2f"/>
+        <stop offset=".45" stop-color="#6a6a72"/>
+        <stop offset="1" stop-color="#2a2a2f"/>
+      </linearGradient>
+      <clipPath id="cLabel"><circle cx="50" cy="50" r="50"/></clipPath>
+      <filter id="fSoft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.1"/></filter>
+      <filter id="fArmShadow" x="-60%" y="-20%" width="220%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation=".75"/></filter>
+      <!-- Paper grain for the record label -->
+      <filter id="fPaper" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="2" seed="4"/>
+        <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 -.2"/>
+      </filter>
+
+      <!-- The tonearm, pointing straight down from its pivot at (0, 0). The stylus sits
+           at (0, 59.5), which is ARM_LEN in deck.js. Drawn once, used by the arm and its shadow. -->
+      <g id="armShape">
+        <rect x="-.75" y="-10" width="1.5" height="10" fill="#a3a4aa"/>
+        <rect x="-3.4" y="-17" width="6.8" height="8" rx="1.3" fill="url(#gWeight)"/>
+        <path d="M-3.4 -15H3.4M-3.4 -13.1H3.4M-3.4 -11.2H3.4" stroke="#000" stroke-opacity=".4" stroke-width=".3"/>
+        <path d="M0 0L0 12C0 22-2.5 27-2.5 34C-2.5 42 3.5 45 3.5 51" fill="none" stroke="#4d4e54" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M0 0L0 12C0 22-2.5 27-2.5 34C-2.5 42 3.5 45 3.5 51" fill="none" stroke="#c6c7cd" stroke-width="1.12" stroke-linecap="round"/>
+        <path d="M0 0L0 12C0 22-2.5 27-2.5 34C-2.5 42 3.5 45 3.5 51" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".28" transform="translate(-.28 0)"/>
+        <!-- headshell and cartridge, turned so the stylus sits along the groove -->
+        <g transform="translate(0 59.5) rotate(22.8)">
+          <path d="M2.1 -6.6L4.7 -7.9" stroke="#b9bac0" stroke-width=".95" stroke-linecap="round"/>
+          <rect x="-2.3" y="-9.6" width="4.6" height="10" rx=".9" fill="#1d1d22" stroke="#6b6c72" stroke-width=".3"/>
+          <path d="M-1.3 -8.4h2.6M-1.3 -6.9h2.6" stroke="#fff" stroke-opacity=".22" stroke-width=".25"/>
+          <rect x="-1.75" y="-4.3" width="3.5" height="4.6" rx=".55" class="cart"/>
+          <rect x="-1.75" y="-4.3" width="3.5" height="1.1" fill="#000" opacity=".28"/>
+          <circle cy=".25" r=".38" fill="#efeff3"/>
+        </g>
+        <circle r="3.6" fill="#1b1b20" stroke="#fff" stroke-opacity=".12" stroke-width=".3"/>
+        <circle r="2.4" fill="url(#gMetal)"/>
+        <circle r=".8" fill="#26262b"/>
+      </g>
+    </defs>
   </svg>
 
-  <div class="bg" aria-hidden="true"><div class="bg-art" id="bgArt"></div></div>
-
   <div class="app">
-    <header class="topbar">
-      <div class="brand">
+    <header class="rail">
+      <div class="brand" title="Vinyl">
         <svg viewBox="0 0 24 24" class="brand-mark" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" fill="currentColor" opacity=".18"/>
-          <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width=".8"/>
-          <circle cx="12" cy="12" r="3.6" fill="var(--accent)"/>
-          <circle cx="12" cy="12" r=".9" fill="#121014"/>
+          <circle cx="12" cy="12" r="11" fill="#0b0b0d" stroke="#fff" stroke-opacity=".14" stroke-width=".6"/>
+          <circle cx="12" cy="12" r="7.6" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width=".5"/>
+          <circle cx="12" cy="12" r="4" fill="var(--accent)"/>
+          <circle cx="12" cy="12" r=".9" fill="#0b0b0d"/>
         </svg>
-        <span>Vinyl</span>
+        <span class="rail-word" aria-hidden="true">VINYL</span>
       </div>
-      <div class="top-actions">
-        <button class="room-pill" id="roomPill" hidden title="Open the room"><span class="live-dot"></span><span id="roomPillText">Live</span></button>
+      <nav class="rail-nav" aria-label="Vinyl">
+        <button class="icon-btn sheet-only" data-open="queue" title="Queue"><svg class="i"><use href="#i-queue"/></svg></button>
+        <button class="icon-btn sheet-only" data-open="library" title="Library"><svg class="i"><use href="#i-library"/></svg></button>
         <button class="icon-btn" id="btnRoom" title="Listen together"><svg class="i"><use href="#i-group"/></svg></button>
         <button class="icon-btn" id="btnVideo" title="Show or hide video (V)" aria-pressed="false"><svg class="i"><use href="#i-video"/></svg></button>
         <button class="icon-btn" id="btnSettings" title="Settings"><svg class="i"><use href="#i-settings"/></svg></button>
+      </nav>
+      <div class="rail-foot">
+        <button class="room-pill" id="roomPill" hidden title="Open the room"><span class="live-dot"></span><span id="roomPillText">Live</span></button>
+        <span class="power" aria-hidden="true"></span>
       </div>
     </header>
 
     <main class="stage">
-      <div class="deck-wrap" id="deckWrap">
-        <svg id="deck" class="no-art" viewBox="0 0 100 100" role="img" aria-label="Turntable. Tap the record to play or pause, swipe to skip.">
-          <defs>
-            <linearGradient id="gPlinth" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" style="stop-color:var(--plinth-1)"/>
-              <stop offset="1" style="stop-color:var(--plinth-2)"/>
-            </linearGradient>
-            <linearGradient id="gPlinthEdge" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#fff" stop-opacity=".16"/>
-              <stop offset=".08" stop-color="#fff" stop-opacity="0"/>
-              <stop offset=".92" stop-color="#000" stop-opacity="0"/>
-              <stop offset="1" stop-color="#000" stop-opacity=".3"/>
-            </linearGradient>
-            <radialGradient id="gVinyl" cx=".5" cy=".5" r=".5">
-              <stop offset=".3" stop-color="#1b1b1d"/>
-              <stop offset=".97" stop-color="#0c0c0d"/>
-              <stop offset="1" stop-color="#222"/>
-            </radialGradient>
-            <radialGradient id="gPlatter" cx=".5" cy=".5" r=".5">
-              <stop offset=".9" stop-color="#2a2a2e"/>
-              <stop offset="1" stop-color="#4a4a50"/>
-            </radialGradient>
-            <linearGradient id="gSheen" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#fff" stop-opacity="0"/>
-              <stop offset=".5" stop-color="#fff" stop-opacity=".13"/>
-              <stop offset="1" stop-color="#fff" stop-opacity="0"/>
-            </linearGradient>
-            <linearGradient id="gMetal" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#8d8d94"/>
-              <stop offset=".5" stop-color="#e9e9ee"/>
-              <stop offset="1" stop-color="#9a9aa1"/>
-            </linearGradient>
-            <clipPath id="cLabel"><circle cx="44" cy="52" r="12.6"/></clipPath>
-            <clipPath id="cVinyl"><circle cx="44" cy="52" r="39"/></clipPath>
-            <filter id="fShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="1.1" stdDeviation="1.3" flood-color="#000" flood-opacity=".55"/>
-            </filter>
-            <filter id="fArmShadow" x="-50%" y="-20%" width="200%" height="140%">
-              <feDropShadow dx="1.4" dy="1.8" stdDeviation=".9" flood-color="#000" flood-opacity=".5"/>
-            </filter>
-          </defs>
+      <div class="plinth">
+        <!-- The display: what's on the deck, how far in, what's next -->
+        <section class="lcd now" aria-live="polite">
+          <div class="lcd-top">
+            <span class="lcd-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <div class="meta">
+              <h1 id="title">Drop the needle</h1>
+              <p id="artist">Paste a YouTube Music link to start</p>
+            </div>
+            <div class="lcd-side">
+              <span class="lcd-src" id="lcdSrc"></span>
+              <p class="up-next" id="upNext"></p>
+            </div>
+          </div>
+          <div class="progress">
+            <span id="tCur" class="time">0:00</span>
+            <input id="seek" class="range seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+            <span id="tDur" class="time">0:00</span>
+          </div>
+        </section>
 
-          <!-- plinth -->
-          <rect x="2" y="2" width="96" height="96" rx="5.5" fill="url(#gPlinth)"/>
-          <rect x="2" y="2" width="96" height="96" rx="5.5" fill="url(#gPlinthEdge)"/>
-          <rect x="2.3" y="2.3" width="95.4" height="95.4" rx="5.2" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width=".35"/>
-
-          <!-- platter -->
-          <circle cx="44" cy="52" r="41" fill="url(#gPlatter)" filter="url(#fShadow)"/>
-          <g fill="none" stroke="#fff" stroke-opacity=".08" stroke-width=".25">
-            <circle cx="44" cy="52" r="40.2"/>
-          </g>
-
-          <!-- spinning record -->
-          <g id="disc">
-            <circle cx="44" cy="52" r="39" fill="url(#gVinyl)"/>
-            <g id="grooves" fill="none"></g>
-            <circle class="label-bg" cx="44" cy="52" r="12.6"/>
-            <g class="label-blank">
-              <circle cx="44" cy="52" r="9.6" fill="none" stroke="#000" stroke-opacity=".18" stroke-width=".3"/>
-              <text x="44" y="46.6" text-anchor="middle" class="label-text">VINYL</text>
-              <text x="44" y="60.2" text-anchor="middle" class="label-text sm">33⅓ RPM</text>
-            </g>
-            <image id="labelArt" x="31.4" y="39.4" width="25.2" height="25.2" preserveAspectRatio="xMidYMid slice" clip-path="url(#cLabel)"/>
-            <circle cx="44" cy="52" r="12.6" fill="none" stroke="#000" stroke-opacity=".35" stroke-width=".4"/>
-          </g>
-
-          <!-- static light reflections -->
-          <g clip-path="url(#cVinyl)" pointer-events="none">
-            <path d="M44 52 L4 22 L16 8 Z" fill="url(#gSheen)" opacity=".8"/>
-            <path d="M44 52 L84 82 L72 96 Z" fill="url(#gSheen)" opacity=".55"/>
-          </g>
-          <circle cx="44" cy="52" r="1.15" fill="url(#gMetal)"/>
-
-          <!-- deck details -->
-          <g class="deck-ui">
-            <rect x="6" y="91" width="7.6" height="3.6" rx="1" class="speed on"/>
-            <text x="9.8" y="93.65" text-anchor="middle" class="speed-text">33</text>
-            <rect x="14.6" y="91" width="7.6" height="3.6" rx="1" class="speed"/>
-            <text x="18.4" y="93.65" text-anchor="middle" class="speed-text">45</text>
-            <circle cx="92.4" cy="93" r=".95" class="led"/>
-            <rect x="79" y="89.6" width="9.6" height="6.4" rx="1.6" class="start-btn"/>
-          </g>
-
-          <!-- arm rest -->
-          <rect x="87" y="66" width="4.6" height="2.4" rx="1" fill="#0c0c0d" opacity=".55"/>
-
-          <!-- tonearm (pivot at 86,16) -->
-          <g transform="translate(86 16)">
-            <circle r="7.4" fill="#1a1a1d" filter="url(#fShadow)"/>
-            <circle r="6.4" fill="url(#gMetal)" opacity=".9"/>
-            <circle r="4.4" fill="#26262a"/>
-            <g id="arm" filter="url(#fArmShadow)">
-              <rect x="-2.9" y="-13.2" width="5.8" height="7" rx="1.3" fill="#2d2d31" stroke="#55555c" stroke-width=".3"/>
-              <path d="M0 -7 L0 45 Q0 49 -1.6 52.5" fill="none" stroke="url(#gMetal)" stroke-width="1.5" stroke-linecap="round"/>
-              <g transform="translate(-2.2 55.5) rotate(24)">
-                <rect x="-2.3" y="-3" width="4.6" height="8.6" rx=".9" fill="#2b2b30" stroke="#5c5c63" stroke-width=".3"/>
-                <rect x="-.9" y="-2" width="1.8" height="1.4" rx=".3" fill="var(--accent)"/>
+        <div class="deck-wrap" id="deckWrap">
+          <div id="deck" class="deck no-art" role="img" aria-label="Turntable. Tap the record to play or pause, swipe to skip, drag the tonearm to move through the song.">
+            <!-- The plate under everything, in deck units (100 × 100): platter shadow,
+                 strobe lamp, tonearm base, anti-skate dial, cue lever and arm rest. -->
+            <svg class="plinth-art" viewBox="0 0 100 100" aria-hidden="true">
+              <circle cx="44" cy="55.9" r="41.3" fill="#000" opacity=".55" filter="url(#fSoft)"/>
+              <g transform="translate(6.2 93.6)">
+                <circle r="2.7" fill="#08080a" stroke="#fff" stroke-opacity=".08" stroke-width=".25"/>
+                <circle r="1.55" class="lamp"/>
               </g>
-              <circle r="2.2" fill="url(#gMetal)"/>
-            </g>
-          </g>
-        </svg>
+              <text x="10.4" y="94.6" class="silk">33⅓ RPM</text>
+              <g transform="translate(88 19)">
+                <circle r="7.4" fill="#09090b" stroke="#fff" stroke-opacity=".07" stroke-width=".25"/>
+                <circle r="6.35" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width=".7" stroke-dasharray=".14 1.19"/>
+                <circle r="5.5" fill="#16161b" stroke="#fff" stroke-opacity=".09" stroke-width=".25"/>
+              </g>
+              <g transform="translate(79 8)">
+                <circle r="2.4" fill="#16161b" stroke="#fff" stroke-opacity=".1" stroke-width=".25"/>
+                <circle r="1.75" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width=".35" stroke-dasharray=".1 .82"/>
+                <path d="M0 -1.6V-.5" class="silk-line"/>
+              </g>
+              <g transform="translate(96 30)">
+                <rect x="-1.7" y="-1.7" width="3.4" height="3.4" rx=".7" fill="#16161b" stroke="#fff" stroke-opacity=".1" stroke-width=".25"/>
+                <rect x="-.42" y="-6" width=".84" height="5.2" rx=".42" fill="url(#gMetal)"/>
+                <circle cy="-6.2" r="1.15" fill="#24242a" stroke="#fff" stroke-opacity=".14" stroke-width=".25"/>
+              </g>
+              <g transform="translate(90 62) rotate(-2)">
+                <circle r="1.9" fill="#09090b" stroke="#fff" stroke-opacity=".1" stroke-width=".25"/>
+                <rect x="-1.9" y="-.65" width="3.8" height="1.3" rx=".65" fill="#26262c" stroke="#fff" stroke-opacity=".14" stroke-width=".2"/>
+                <circle cx="-1.35" r=".38" fill="url(#gMetal)"/>
+                <circle cx="1.35" r=".38" fill="url(#gMetal)"/>
+              </g>
+            </svg>
+
+            <div class="platter"></div>
+            <div class="strobe"></div>
+            <div class="strobe-lit"><div class="strobe"></div></div>
+
+            <div id="disc" class="disc">
+              <canvas class="vinyl" id="vinyl"></canvas>
+              <svg class="label" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="label-bg" cx="50" cy="50" r="50"/>
+                <g class="label-blank">
+                  <circle cx="50" cy="50" r="39" fill="none" stroke="#000" stroke-opacity=".16" stroke-width=".6"/>
+                  <text x="50" y="32" text-anchor="middle" class="label-text">VINYL</text>
+                  <text x="50" y="75" text-anchor="middle" class="label-text sm">33⅓ RPM · SIDE A</text>
+                </g>
+                <image id="labelArt" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" clip-path="url(#cLabel)"/>
+                <rect width="100" height="100" filter="url(#fPaper)" clip-path="url(#cLabel)" opacity=".35"/>
+                <circle cx="50" cy="50" r="49.3" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="1.4"/>
+                <circle cx="50" cy="50" r="5" fill="#000" opacity=".4"/>
+              </svg>
+            </div>
+            <div class="sheen" id="sheen"></div>
+            <span class="spindle"></span>
+
+            <svg class="arm arm-shadow" id="armShadow" viewBox="-14 -22 28 88" aria-hidden="true"><use href="#armShape" filter="url(#fArmShadow)"/></svg>
+            <svg class="arm" id="arm" viewBox="-14 -22 28 88" aria-hidden="true">
+              <use href="#armShape"/>
+              <path class="arm-hit" d="M0 -17L0 12C0 22-2.5 27-2.5 34C-2.5 42 3.5 45 3.5 51L0 59.5"/>
+              <circle class="arm-hit head" cx="1" cy="55" r="5.5"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Transport keys, after Dacx's media deck -->
+        <div class="keys controls">
+          <button class="key" id="btnShuffle" title="Shuffle (S)" aria-pressed="false"><span class="led"></span><svg class="i"><use href="#i-shuffle"/></svg><span class="key-label">Shuffle</span></button>
+          <button class="key" id="btnPrev" title="Previous (P)"><svg class="i"><use href="#i-prev"/></svg><span class="key-label">Prev</span></button>
+          <button class="key key-play" id="btnPlay" title="Play / Pause (Space)"><span class="led"></span><svg class="i"><use id="playIcon" href="#i-play"/></svg><span class="key-label"><span class="if-stopped">Play</span><span class="if-playing">Pause</span></span></button>
+          <button class="key" id="btnNext" title="Next (N)"><svg class="i"><use href="#i-next"/></svg><span class="key-label">Next</span></button>
+          <button class="key" id="btnRepeat" title="Repeat (R)" aria-pressed="false"><span class="led"></span><svg class="i"><use id="repeatIcon" href="#i-repeat"/></svg><span class="key-label">Repeat</span></button>
+        </div>
+
+        <!-- Volume knob: plain at rest, hold and turn to change, tap to mute -->
+        <div class="knob-cell">
+          <div class="knob" id="knob" role="slider" tabindex="0" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80">
+            <svg class="knob-ring" viewBox="0 0 100 100" aria-hidden="true"></svg>
+            <span class="knob-end minus" aria-hidden="true">−</span>
+            <span class="knob-end plus" aria-hidden="true">+</span>
+            <span class="knob-body"><span class="knob-dot"></span></span>
+            <span class="knob-value" aria-hidden="true"></span>
+          </div>
+          <input id="vol" type="range" min="0" max="100" value="80" aria-label="Volume" hidden>
+          <button id="btnMute" title="Mute (M)" hidden><svg class="i"><use id="volIcon" href="#i-volume"/></svg></button>
+        </div>
       </div>
-
-      <section class="now" aria-live="polite">
-        <div class="meta">
-          <h1 id="title">Drop the needle</h1>
-          <p id="artist">Paste a YouTube Music link to start</p>
-        </div>
-
-        <div class="progress">
-          <span id="tCur" class="time">0:00</span>
-          <input id="seek" class="range" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
-          <span id="tDur" class="time">0:00</span>
-        </div>
-
-        <div class="controls">
-          <button class="icon-btn toggle" id="btnShuffle" title="Shuffle (S)" aria-pressed="false"><svg class="i"><use href="#i-shuffle"/></svg></button>
-          <button class="icon-btn lg" id="btnPrev" title="Previous (P)"><svg class="i"><use href="#i-prev"/></svg></button>
-          <button class="fab" id="btnPlay" title="Play / Pause (Space)"><svg class="i"><use id="playIcon" href="#i-play"/></svg></button>
-          <button class="icon-btn lg" id="btnNext" title="Next (N)"><svg class="i"><use href="#i-next"/></svg></button>
-          <button class="icon-btn toggle" id="btnRepeat" title="Repeat (R)" aria-pressed="false"><svg class="i"><use id="repeatIcon" href="#i-repeat"/></svg></button>
-        </div>
-
-        <div class="sub">
-          <div class="vol">
-            <button class="icon-btn sm" id="btnMute" title="Mute (M)"><svg class="i"><use id="volIcon" href="#i-volume"/></svg></button>
-            <input id="vol" class="range" type="range" min="0" max="100" value="80" aria-label="Volume">
-          </div>
-          <p class="up-next" id="upNext"></p>
-          <div class="sheet-btns sheet-only">
-            <button class="icon-btn sm" data-open="queue" title="Queue"><svg class="i"><use href="#i-queue"/></svg></button>
-            <button class="icon-btn sm" data-open="library" title="Library"><svg class="i"><use href="#i-library"/></svg></button>
-          </div>
-        </div>
-      </section>
     </main>
 
     <div class="scrim sheet-only" id="scrim"></div>
@@ -362,6 +380,7 @@
 
   <script src="spotify.js"></script>
   <script src="room.js"></script>
+  <script src="deck.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
