@@ -98,7 +98,7 @@ What each part does:
 - **The crate:** hover a sleeve to pull it out and see the record inside. Click it and the record comes out, flies onto the turntable and plays. The record that's playing leaves an empty, marked sleeve behind. With an empty queue, the crate holds three demo records to try.
 - **Changing songs changes the record:** the old one goes back to the crate, the new one drops onto the platter, the arm waits on its rest and then cues in.
 - **The record** is pressed fresh for every song, with its own grooves, quiet bands between tracks and a matrix number in the run-out. It spins up and brakes with real weight, and the light on its grooves stays put while it turns.
-- **The tonearm** follows the song like a real stylus. Pick it up and drop it anywhere on the record to jump there. The time shows where it will land. When you pause, it lifts off the record.
+- **The tonearm** follows the song like a real stylus. Pick it up and drop it anywhere on the record to jump there. The time shows where it will land. When you pause, it lifts and swings back to its rest; press play and it cues back in right where the song left off.
 - **The strobe marks** on the platter rim light up near the lamp and stand still once the platter is at 33⅓.
 - **The knob** is a real one: a knurled chrome skirt, a turned chrome cap, and only its white dot shows the volume. Grab it by the rim and turn it (the dot follows your finger), or pull it like a fader: up or right is louder. Press it like a button to mute (the dot goes dark).
 - **The keys** are polished chrome. Like a mirror, they show a bright top, a dark horizon, and the warm room below it.

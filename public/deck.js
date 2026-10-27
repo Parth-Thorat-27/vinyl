@@ -6,8 +6,8 @@
      between tracks, run-out and a matrix number in the dead wax). It spins with
      the platter's weight: up to speed in well under a second, braking a bit slower.
    - The light stays put while the record turns under it, so the sheen stands still.
-   - The tonearm follows the song like a real stylus, lifts to travel, and can be
-     picked up and dropped anywhere on the record to seek.
+   - The tonearm follows the song like a real stylus, lifts to travel, goes home
+     to its rest on pause, and can be picked up and dropped anywhere on the record to seek.
    - The strobe marks on the platter rim stand still once it reaches 33⅓.
    - Changing songs changes the record: the old one goes back to its sleeve in
      the crate (crate.js), the new one comes out and drops onto the platter.
@@ -189,13 +189,13 @@ function deckFrame(now) {
   else if (swapping) cue = 1;
   else if (t && phase !== 'idle') {
     const E = eng(), d = E.ready() ? E.duration() : 0;
-    aim = armAt(d > 0 ? Math.min(1, E.time() / d) : 0);
+    // Paused, the arm goes home to its rest; on play it cues back in where the song left off.
+    aim = phase === 'paused' ? ARM_REST : armAt(d > 0 ? Math.min(1, E.time() / d) : 0);
     if (Deck.hold) {
       // Just dropped the needle: stay there until the player catches up.
       if (now > Deck.hold.until || Math.abs(aim - Deck.hold.angle) < 0.6) { Deck.hold = null; seeking = false; }
       else aim = Deck.hold.angle;
     }
-    if (phase === 'paused') cue = 1;
   }
   const gap = aim - Deck.armAngle;
   if (!Deck.drag && Math.abs(gap) > 1.2) cue = 1; // never drag the stylus across the grooves

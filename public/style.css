@@ -19,7 +19,6 @@
   /* A warm room: espresso and walnut, brass and amber, lit by the fire behind it (glow.js).
      The surfaces let some of that glow through. */
   --bg: #110c09;                    /* espresso */
-  --bin: rgb(24 17 12 / .6);        /* the record crate */
   --side: rgb(17 12 9 / .72);       /* sidebar, header */
   --key: #2a1f18;
   --key-hover: #33261d;
@@ -390,8 +389,8 @@ body[data-phase="paused"] .key-play .led { background: var(--warn); }
 .knob.turning { cursor: grabbing; }
 .knob:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
-/* ---------- 2. The crate: one sleeve per song, spines out ---------- */
-.crate { grid-area: crate; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--bin); border-left: 1px solid var(--line); }
+/* ---------- 2. The crate: one sleeve per song, spines out, standing in the same room as the turntable ---------- */
+.crate { grid-area: crate; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .crate-head { margin: 0; padding: 18px 16px 10px; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
 .crate-list {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
@@ -676,7 +675,6 @@ kbd { font-family: inherit; font-size: 11.5px; padding: 1px 6px; border-radius: 
   .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) clamp(104px, 18vh, 150px); grid-template-areas: "head" "player" "crate"; }
   .player-grid { --pad: 14px; --gap: 12px; --now-h: 98px; --ctl-h: 72px; --knob: 56px; }
   .up-next { display: none; }
-  .crate { border-left: 0; border-top: 1px solid var(--line); }
   .crate-head { padding: 8px 14px 4px; }
   .crate-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 4px 12px 10px; }
   .sleeve { width: 34px; height: 100%; writing-mode: vertical-rl; padding: 10px 0; }
