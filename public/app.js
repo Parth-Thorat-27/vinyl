@@ -85,7 +85,6 @@ const S = {
   repeat: store.get('repeat', 'off'), // off | all | one
   volume: store.get('volume', 80),
   muted: false,
-  showVideo: store.get('showVideo', matchMedia('(min-width: 960px)').matches),
   library: store.get('library', []),
 };
 if (S.index >= S.queue.length) S.index = S.queue.length ? 0 : -1;
@@ -99,7 +98,6 @@ const persist = debounce(() => {
   store.set('shuffle', S.shuffle);
   store.set('repeat', S.repeat);
   store.set('volume', S.volume);
-  store.set('showVideo', S.showVideo);
   store.set('library', S.library);
 }, 300);
 const persistMeta = debounce(() => {
@@ -520,19 +518,6 @@ function toggleMute(force) {
   $('#volIcon').setAttribute('href', S.muted ? '#i-volume-off' : '#i-volume');
   knobRender();
 }
-function toggleVideo(force) {
-  S.showVideo = typeof force === 'boolean' ? force : !S.showVideo;
-  syncVideoDock();
-  $('#btnVideo').setAttribute('aria-pressed', S.showVideo);
-  $('#chkVideo').checked = S.showVideo;
-  persist();
-}
-function syncVideoDock() {
-  // Spotify tracks have no video, so the window steps aside while one plays.
-  const show = S.showVideo && S.queue[S.index]?.src !== 'sp';
-  $('#videoDock').classList.toggle('hidden', !show);
-  document.body.classList.toggle('video-on', show);
-}
 function syncToggles() {
   $('#btnShuffle').setAttribute('aria-pressed', S.shuffle);
   $('#btnRepeat').setAttribute('aria-pressed', S.repeat !== 'off');
@@ -542,7 +527,6 @@ function syncToggles() {
 /* ---------- now playing UI ---------- */
 function updateNowPlaying() {
   const t = S.queue[S.index];
-  syncVideoDock();
   if (!t) {
     $('#title').textContent = 'Drop the needle';
     $('#artist').textContent = 'Pick a record from the crate';
@@ -1042,7 +1026,6 @@ function openSettings(section) {
   const d = $('#settings');
   $('#originCode').textContent = location.origin;
   $('#clientIdInput').value = store.get('clientId', '');
-  $('#chkVideo').checked = S.showVideo;
   const secure = window.isSecureContext;
   $('#originHint').textContent = secure
     ? `Google sign-in works on this address (${location.origin}). Add each address you use as an authorized origin.`
@@ -1062,7 +1045,6 @@ function bind() {
   $('#btnShuffle').addEventListener('click', toggleShuffle);
   $('#btnRepeat').addEventListener('click', cycleRepeat);
   $('#btnMute').addEventListener('click', () => toggleMute());
-  $('#btnVideo').addEventListener('click', () => toggleVideo());
   $('#btnSettings').addEventListener('click', () => openSettings());
   $('#btnClearQueue').addEventListener('click', () => { if (S.queue.length && confirm('Clear the whole queue?')) clearQueue(); });
 
@@ -1123,7 +1105,6 @@ function bind() {
     if (v) { $('#settings').close(); openPanel('library'); }
   });
   $('#btnDisconnect').addEventListener('click', () => { disconnect(); $('#btnDisconnect').hidden = true; });
-  $('#chkVideo').addEventListener('change', (e) => toggleVideo(e.target.checked));
   $('#btnResetSaved').addEventListener('click', () => { if (confirm('Remove all saved playlists?')) { S.library = []; persist(); renderSaved(); } });
   $('#btnResetAll').addEventListener('click', () => {
     if (!confirm('Reset the app? This clears your queue, saved playlists and settings on this device.')) return;
@@ -1143,7 +1124,7 @@ function bind() {
       ArrowLeft: () => (e.shiftKey ? prev() : seekBy(-5)),
       ArrowUp: () => setVolume(S.volume + 5),
       ArrowDown: () => setVolume(S.volume - 5),
-      n: () => next(), p: prev, s: toggleShuffle, r: cycleRepeat, m: () => toggleMute(), v: () => toggleVideo(),
+      n: () => next(), p: prev, s: toggleShuffle, r: cycleRepeat, m: () => toggleMute(),
       Escape: closePanel,
     };
     if (map[k]) { e.preventDefault(); map[k](); }
@@ -1168,7 +1149,6 @@ function bind() {
 /* ---------- boot ---------- */
 bind();
 syncToggles();
-toggleVideo(S.showVideo);
 setRange($('#vol'), S.volume, 100);
 renderQueue(); renderSaved(); renderAccount();
 spBoot();

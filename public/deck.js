@@ -339,37 +339,58 @@ function deckResize() {
 
 /* ---------- volume knob: a real one, only its white dot shows the level ---------- */
 const KNOB_FROM = 135, KNOB_SWEEP = 270; // from bottom-left, over the top, to bottom-right
-const Knob = { el: null, pointer: null, drag: null, last: 0, down: null, turning: false };
+const KNOB_SLIDE = 180; // px of travel from silent to full when it's pulled like a fader
+const Knob = { el: null, pointer: null, drag: null, last: 0, down: null, prev: null, turning: false, mode: null };
 
-function knobAngle(e) {
+function knobCentre() {
   const r = Knob.el.getBoundingClientRect();
-  return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 };
+}
+function knobAngle(e, c = knobCentre()) {
+  return Math.atan2(e.clientY - c.y, e.clientX - c.x) * 180 / Math.PI;
 }
 function knobDown(e) {
   if (Knob.pointer != null || e.button > 0) return;
+  // No text selection: a drag would otherwise select the labels around the knob, and the next
+  // press would start dragging that selection, which cancels the turn.
+  e.preventDefault();
+  Knob.el.focus({ preventScroll: true });
   Knob.pointer = e.pointerId;
   Knob.el.setPointerCapture(e.pointerId);
   Knob.down = { x: e.clientX, y: e.clientY, t: performance.now() };
+  Knob.prev = { x: e.clientX, y: e.clientY };
   Knob.turning = false;
   Knob.last = knobAngle(e);
 }
 function knobMove(e) {
   if (e.pointerId !== Knob.pointer) return;
+  const c = knobCentre();
   if (!Knob.turning) {
-    if (Math.hypot(e.clientX - Knob.down.x, e.clientY - Knob.down.y) < 6) return;
+    const dx = e.clientX - Knob.down.x, dy = e.clientY - Knob.down.y;
+    if (Math.hypot(dx, dy) < 6) return;
     Knob.turning = true;
     Knob.drag = S.volume;
     Knob.el.classList.add('turning');
+    // Grabbed by the rim and moved around it: the dot follows the finger. Anything else
+    // (pressed in the middle, pulled straight up or across) works like a fader: up or right is louder.
+    const px = Knob.down.x - c.x, py = Knob.down.y - c.y, d = Math.hypot(px, py);
+    const around = Math.abs(dx * py - dy * px) / (d || 1), out = Math.abs(dx * px + dy * py) / (d || 1);
+    Knob.mode = d > c.r * 0.55 && around > out * 2 ? 'turn' : 'slide';
   }
-  // Near the centre a tiny move swings the angle wildly, so ignore it.
-  const r = Knob.el.getBoundingClientRect();
-  if (Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) < r.width * 0.12) return;
-  const a = knobAngle(e);
-  let delta = a - Knob.last;
-  if (delta > 180) delta -= 360;
-  if (delta < -180) delta += 360;
-  Knob.last = a;
-  Knob.drag = Math.max(0, Math.min(100, Knob.drag + delta / KNOB_SWEEP * 100));
+  let step;
+  if (Knob.mode === 'slide') {
+    step = (e.clientX - Knob.prev.x - (e.clientY - Knob.prev.y)) / KNOB_SLIDE * 100;
+  } else {
+    const a = knobAngle(e, c);
+    let delta = a - Knob.last;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    Knob.last = a;
+    // Near the centre a tiny move swings the angle wildly, so let it pass without turning.
+    step = Math.hypot(e.clientX - c.x, e.clientY - c.y) < c.r * 0.25 ? 0 : delta / KNOB_SWEEP * 100;
+  }
+  Knob.prev = { x: e.clientX, y: e.clientY };
+  Knob.drag = Math.max(0, Math.min(100, Knob.drag + step));
   if (Math.round(Knob.drag) !== S.volume) setVolume(Knob.drag); // setVolume re-renders the knob
   else knobRender();
 }
@@ -407,6 +428,8 @@ function knobBoot() {
   k.addEventListener('pointermove', knobMove);
   k.addEventListener('pointerup', (e) => knobUp(e));
   k.addEventListener('pointercancel', (e) => knobUp(e, true));
+  k.addEventListener('lostpointercapture', (e) => knobUp(e, true)); // never leave a turn hanging
+  k.addEventListener('dragstart', (e) => e.preventDefault());
   k.addEventListener('wheel', (e) => { e.preventDefault(); setVolume(S.volume + (e.deltaY < 0 ? 2 : -2)); }, { passive: false });
   k.addEventListener('keydown', knobKey);
   knobRender();

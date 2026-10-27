@@ -89,7 +89,7 @@ The `public/` folder is a plain static site. Drag it onto **https://app.netlify.
 
 The screen has three parts:
 
-1. **The turntable.** It sits in its own box, with the song's title and seek bar below it, then five keys (Shuffle, Previous, Play, Next, Repeat) and a volume knob.
+1. **The turntable.** It sits in its own brushed silver box, with the song's title and seek bar below it, then five keys (Shuffle, Previous, Play, Next, Repeat) and a volume knob.
 2. **The crate.** Every song in your queue is a record in it.
 3. **Everything else.** Queue, Library, Search, listening rooms and Settings. On phones and tablets this part opens as a sheet from the top bar, and the crate runs along the bottom.
 
@@ -100,8 +100,10 @@ What each part does:
 - **The record** is pressed fresh for every song, with its own grooves, quiet bands between tracks and a matrix number in the run-out. It spins up and brakes with real weight, and the light on its grooves stays put while it turns.
 - **The tonearm** follows the song like a real stylus. Pick it up and drop it anywhere on the record to jump there. The time shows where it will land. When you pause, it lifts off the record.
 - **The strobe marks** on the platter rim light up near the lamp and stand still once the platter is at 33⅓.
-- **The knob** is a real one: a knurled brass skirt, a dark cap, and only its cream dot shows the volume. Turn it, or press it like a button to mute (the dot goes dark).
-- **It's warm on purpose:** walnut plinth, brass, amber lamps, and a time readout that glows like an old amber display. Each album still tints the accent, but always a shade of orange, from vermilion to amber.
+- **The knob** is a real one: a knurled chrome skirt, a turned chrome cap, and only its white dot shows the volume. Grab it by the rim and turn it (the dot follows your finger), or pull it like a fader: up or right is louder. Press it like a button to mute (the dot goes dark).
+- **The keys** are polished chrome. Like a mirror, they show a bright top, a dark horizon, and the warm room below it.
+- **It's warm on purpose:** amber lamps, and a time readout that glows like an old amber display. The fire's light catches the bottom of the silver plinth. Each album still tints the accent, but always a shade of orange, from vermilion to amber.
+- **No video window:** the YouTube player plays the sound out of sight, so the turntable is the only picture.
 
 ## The glow
 
@@ -122,13 +124,13 @@ Behind the whole app burns a fireside, drawn live with WebGL. Warm smoke rises a
 | Click a record in the crate | put it on and play it (hover to preview) |
 | Tap the record | play / pause |
 | Drag the tonearm onto the record | jump to that point in the song |
-| Turn the knob | volume (press it to mute, or scroll over it) |
+| Turn the knob, or drag it up / down | volume (press it to mute, or scroll over it) |
 | Swipe across the turntable | next / previous |
 | `Space` | play / pause |
 | `←` `→` | seek 5 s (`Shift` = prev/next track) |
 | `↑` `↓` | volume |
 | `N` / `P` | next / previous |
-| `S` / `R` / `M` / `V` | shuffle / repeat / mute / video |
+| `S` / `R` / `M` | shuffle / repeat / mute |
 
 Media keys, headphone buttons and the lock-screen player also work.
 
