@@ -15,7 +15,7 @@ const DEMO_RECORDS = [
   { id: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley' },
 ];
 
-const Crate = { list: null, preview: null, shown: null, hideTimer: null, lastIndex: null };
+const Crate = { list: null, preview: null, shown: null, hideTimer: null, lastIndex: null, slide: null };
 const crateDemo = () => !S.queue.length && !roomActive();
 const crateTracks = () => (crateDemo() ? DEMO_RECORDS : S.queue);
 const recordKey = (t) => (t.src || 'yt') + t.id;
@@ -82,10 +82,18 @@ function crateShow(el) {
   p.style.left = `${Math.max(12, Math.min(innerWidth - w - 12, left))}px`;
   p.style.top = `${Math.max(12, Math.min(innerHeight - ph - 12, top))}px`;
 
-  if (Crate.shown !== el) Crate.shown?.classList.remove('peek');
+  const fresh = Crate.shown !== el, open = p.classList.contains('show');
+  if (fresh) Crate.shown?.classList.remove('peek');
   Crate.shown = el;
   el.classList.add('peek');
   p.classList.add('show');
+  // Opening the preview slides the record out (CSS). Moving on to another sleeve while it's open
+  // slides the new one out of its own sleeve too: back inside, then out to where the CSS puts it.
+  if (fresh && open && !deckCalm.matches) {
+    Crate.slide?.cancel();
+    Crate.slide = $('.mini-record', p).animate([{ transform: 'none', offset: 0 }],
+      { duration: 500, delay: 60, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' });
+  }
 }
 function crateHide() {
   clearTimeout(Crate.hideTimer);
@@ -121,9 +129,12 @@ function crateBoot() {
     const s = e.target.closest('.sleeve');
     if (s) cratePlay(+s.dataset.i, circleOver(s));
   });
+  // The list runs to the bottom of the crate, so leaving it isn't enough: off a sleeve and onto
+  // the empty space (or the gaps) puts the record back, unless the pointer reaches another sleeve first.
   list.addEventListener('pointerover', (e) => {
     const s = e.target.closest('.sleeve');
     if (s && hover.matches) crateShow(s);
+    else if (Crate.shown) crateHideSoon();
   });
   list.addEventListener('pointerleave', crateHideSoon);
   list.addEventListener('focusin', (e) => { const s = e.target.closest('.sleeve'); if (s?.matches(':focus-visible')) crateShow(s); });
