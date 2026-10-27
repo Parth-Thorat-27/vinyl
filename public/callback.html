@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Vinyl · Spotify sign-in</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: grid; place-items: center; padding: 24px; box-sizing: border-box; text-align: center;
+      background: #0e0d10; color: #f4f1ec; font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+    p { margin: 0; color: rgb(244 241 236 / .6); }
+    a { color: #1ed760; }
+  </style>
+</head>
+<body>
+  <div>
+    <h1 id="title">Connecting Spotify…</h1>
+    <p id="msg"></p>
+  </div>
+  <script>
+    // Spotify redirects here after sign-in. This page hands the result to Vinyl:
+    //  1. Spotify only accepts 127.0.0.1 (not "localhost"), so if Vinyl was opened on
+    //     localhost we hop over to the same page there first (localStorage is per-address).
+    //  2. Then the result is put in localStorage, where the Vinyl tab picks it up.
+    (function () {
+      var raw = location.search.length > 1 ? location.search.slice(1) : location.hash.slice(1);
+      var q = new URLSearchParams(raw);
+      var state = q.get('state') || '';
+      var target = null;
+      try {
+        var enc = (state.split('~')[1] || '').replace(/-/g, '+').replace(/_/g, '/');
+        target = new URL(atob(enc));
+      } catch (e) { target = null; }
+
+      var loop = ['localhost', '127.0.0.1', '[::1]'];
+      if (target && target.origin !== location.origin) {
+        var ok = target.protocol === 'http:' && target.port === location.port &&
+          loop.indexOf(target.hostname) >= 0 && loop.indexOf(location.hostname) >= 0;
+        if (ok) { location.replace(target.origin + location.pathname + '#' + q.toString()); return; }
+        target = null; // never forward the code anywhere else
+      }
+
+      var data = { code: q.get('code'), state: state, error: q.get('error') || (q.get('code') ? null : 'no_code'), at: Date.now() };
+      var auth = null;
+      try {
+        localStorage.setItem('vinyl.spCallback', JSON.stringify(data));
+        auth = JSON.parse(localStorage.getItem('vinyl.spAuth') || 'null');
+      } catch (e) { /* storage blocked */ }
+      try { if (window.opener) window.opener.postMessage({ type: 'vinyl-spotify' }, location.origin); } catch (e) { /* opener gone */ }
+
+      var app = target ? target.href : './';
+      document.getElementById('title').textContent = data.error ? 'Spotify sign-in didn’t finish' : 'Spotify connected';
+      var msg = document.getElementById('msg');
+      msg.textContent = 'You can close this window and go back to Vinyl. ';
+      var a = document.createElement('a'); a.href = app; a.textContent = 'Open Vinyl';
+      msg.appendChild(a);
+
+      if (auth && auth.popup) window.close();
+      else location.replace(app);
+    })();
+  </script>
+</body>
+</html>
