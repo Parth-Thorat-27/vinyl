@@ -87,21 +87,30 @@ The `public/` folder is a plain static site. Drag it onto **https://app.netlify.
 
 ## The deck
 
-The whole screen is the turntable, built like hardware: a display, tall keys with status lights and one knob.
+The screen has three parts:
 
+1. **The turntable.** It sits in its own box, with the song's title and seek bar below it, then five keys (Shuffle, Previous, Play, Next, Repeat) and a volume knob.
+2. **The crate.** Every song in your queue is a record in it.
+3. **Everything else.** Queue, Library, Search, listening rooms and Settings. On phones and tablets this part opens as a sheet from the top bar, and the crate runs along the bottom.
+
+What each part does:
+
+- **The crate:** hover a sleeve to pull it out and see the record inside. Click it and the record comes out, flies onto the turntable and plays. The record that's playing leaves an empty, marked sleeve behind. With an empty queue, the crate holds three demo records to try.
+- **Changing songs changes the record:** the old one goes back to the crate, the new one drops onto the platter, the arm waits on its rest and then cues in.
 - **The record** is pressed fresh for every song, with its own grooves, quiet bands between tracks and a matrix number in the run-out. It spins up and brakes with real weight, and the light on its grooves stays put while it turns.
-- **The tonearm** follows the song like a real stylus. Pick it up and drop it anywhere on the record to jump there. The display shows where it will land. When you pause, it lifts off the record.
+- **The tonearm** follows the song like a real stylus. Pick it up and drop it anywhere on the record to jump there. The time shows where it will land. When you pause, it lifts off the record.
 - **The strobe marks** on the platter rim light up near the lamp and stand still once the platter is at 33⅓.
-- **The knob** stays a plain circle until you touch it. Hold and turn for volume, tap to mute (the dot turns amber).
-- **The theme** takes its colour from the album art: the label, the cartridge, the lights and the display.
+- **The knob** is a real one: knurled metal, a black cap, and only its white dot shows the volume. Turn it, or press it like a button to mute (the dot goes dark).
+- **The theme** takes its colour from the album art: the plinth, the label, the cartridge and the lights.
 
 ## Controls
 
 | | |
 |---|---|
+| Click a record in the crate | put it on and play it (hover to preview) |
 | Tap the record | play / pause |
 | Drag the tonearm onto the record | jump to that point in the song |
-| Hold and turn the knob | volume (tap it to mute, or scroll over it) |
+| Turn the knob | volume (press it to mute, or scroll over it) |
 | Swipe across the turntable | next / previous |
 | `Space` | play / pause |
 | `←` `→` | seek 5 s (`Shift` = prev/next track) |

@@ -4,8 +4,9 @@
 @property --tint     { syntax: '<color>'; inherits: true; initial-value: hsl(28 30% 13%); }
 @property --plinth-1 { syntax: '<color>'; inherits: true; initial-value: hsl(28 12% 22%); }
 @property --plinth-2 { syntax: '<color>'; inherits: true; initial-value: hsl(28 14% 12%); }
-/* Side of the turntable in px, worked out from the stage size (see .plinth). */
-@property --deck     { syntax: '<length>'; inherits: true; initial-value: 320px; }
+/* Side of the turntable's box, and of the deck inside it, in px (see .player-grid). */
+@property --box      { syntax: '<length>'; inherits: true; initial-value: 320px; }
+@property --deck     { syntax: '<length>'; inherits: true; initial-value: 288px; }
 
 :root {
   --accent: hsl(28 78% 66%);
@@ -15,13 +16,13 @@
   --plinth-1: hsl(28 12% 22%);
   --plinth-2: hsl(28 14% 12%);
 
-  /* Hardware, after Dacx: flat fills, hairline edges, LED dots. Dark gradients band
-     into visible steps on screens, so surfaces stay flat; only metal and the record get light. */
-  --bg: #060608;
-  --plinth: color-mix(in oklab, var(--plinth-2) 30%, #0c0c0f);
+  /* Hardware, after Dacx: flat fills, hairline edges, LED dots. Dark gradients band into
+     visible steps on screens, so surfaces stay flat; only metal, the plinth and vinyl get light. */
+  --bg: #0a0a0c;      /* the room the turntable sits in */
+  --bin: #0d0d10;     /* the record crate */
+  --side: #060608;    /* sidebar, header */
   --key: #17171c;
   --key-hover: #1d1d23;
-  --knob: #1c1c22;
   --lcd: #040405;
   --surface: #0e0e12;
   --surface-2: #17171c;
@@ -39,6 +40,8 @@
   --dots: 'Doto', ui-monospace, 'Cascadia Code', Consolas, monospace;
   --dots-round: 'ROND' 100;
   --ease: cubic-bezier(.2, .8, .2, 1);
+  --crate-w: clamp(170px, 13vw, 220px);
+  --panel-w: clamp(330px, 25vw, 400px);
   color-scheme: dark;
   transition: --accent 1.2s ease, --accent-2 1.2s ease, --tint 1.2s ease, --plinth-1 1.2s ease, --plinth-2 1.2s ease;
 }
@@ -60,40 +63,34 @@ a { color: var(--accent); }
 [hidden] { display: none !important; }
 
 .i { width: 24px; height: 24px; fill: currentColor; flex: none; }
+@keyframes blink { 50% { opacity: .25; } }
 
-/* ---------- App shell: rail | deck | panel ---------- */
+/* ---------- App shell: three parts. Player | crate | everything else ---------- */
 .app {
   position: relative; z-index: 1;
   height: 100vh; height: 100dvh;
-  display: grid; grid-template-rows: minmax(0, 1fr);
-  grid-template-columns: 56px minmax(0, 1fr);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--crate-w) var(--panel-w);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "player crate head" "player crate panel";
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* ---------- Rail (Dacx: logo, the page name written down the side, a status light) ---------- */
-.rail {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 14px 0 16px; min-height: 0;
-  background: var(--bg); border-right: 1px solid var(--line);
+/* ---------- Header: the brand and the app's own buttons ---------- */
+.topbar {
+  grid-area: head; min-width: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 12px 8px 18px;
+  background: var(--side); border-left: 1px solid var(--line);
 }
-.brand { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 14px; }
-.brand-mark { width: 32px; height: 32px; display: block; }
-.rail-word {
-  writing-mode: vertical-rl;
-  font-family: var(--dots); font-variation-settings: var(--dots-round); font-weight: 800; font-size: 16px; letter-spacing: .32em;
-  color: var(--text); line-height: 1;
-}
-.rail-nav { display: flex; flex-direction: column; gap: 4px; }
-.rail-foot { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.power { width: 8px; height: 8px; border-radius: 50%; background: #26262d; transition: background .3s; }
-body[data-phase="playing"] .power { background: var(--ok); }
-body[data-phase="loading"] .power { background: var(--ok); animation: blink 1s steps(2, jump-none) infinite; }
-body[data-phase="paused"] .power { background: var(--warn); }
-@keyframes blink { 50% { opacity: .25; } }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-mark { width: 28px; height: 28px; display: block; flex: none; }
+.brand-word { font-family: var(--dots); font-variation-settings: var(--dots-round); font-weight: 800; font-size: 17px; letter-spacing: .3em; line-height: 1; }
+.top-actions { display: flex; align-items: center; gap: 2px; }
 
 /* ---------- Buttons ---------- */
 .icon-btn {
-  width: 44px; height: 44px; border-radius: 12px;
+  width: 42px; height: 42px; border-radius: 12px;
   display: inline-grid; place-items: center;
   color: var(--text-2);
   transition: background .2s, color .2s, transform .15s;
@@ -125,50 +122,41 @@ body[data-phase="paused"] .power { background: var(--warn); }
 .text-btn { color: var(--text-2); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px; }
 .text-btn:hover { color: var(--text); background: var(--key); }
 
-/* ---------- Stage: the deck's top plate, edge to edge ---------- */
-/* overflow: clip keeps the rotated tonearm box from widening the page (phones ignore it on body). */
-.stage { min-height: 0; min-width: 0; background: var(--plinth); container: stage / size; overflow: clip; }
-.plinth {
-  /* deck.js picks the layout (tall, narrow, wide) from the stage size with the same numbers. */
-  --pad: 24px; --gap: 16px; --lcd-h: 96px; --keys-h: 124px; --knob-min: 96px; --knob-col: 150px; --col: 330px;
+/* ---------- 1. The player: box, what's playing, keys and knob, sized to fit ---------- */
+.player { grid-area: player; min-width: 0; min-height: 0; container: player / size; overflow: clip; }
+.player-grid {
+  --pad: 28px; --gap: 18px; --now-h: 120px; --ctl-h: 96px; --knob: 74px;
+  --box: min(100cqw - 2 * var(--pad), 100cqh - 2 * var(--pad) - var(--now-h) - var(--ctl-h) - 2 * var(--gap), 920px);
   height: 100%; padding: var(--pad); gap: var(--gap);
-  display: grid;
-  /* Like a real deck: platter on the left, the knob in the space to its right. */
-  grid-template: "lcd lcd" var(--lcd-h) "deck knob" minmax(0, 1fr) "keys knob" var(--keys-h) / var(--deck) minmax(0, 1fr);
-  --deck: min(100cqw - 2 * var(--pad) - var(--gap) - var(--knob-col), 100cqh - 2 * var(--pad) - var(--lcd-h) - var(--keys-h) - 2 * var(--gap));
-}
-.stage[data-layout="narrow"] .plinth {
-  grid-template: "lcd" var(--lcd-h) "deck" var(--deck) "keys" var(--keys-h) "knob" minmax(0, 1fr) / minmax(0, 1fr);
-  --deck: min(100cqw - 2 * var(--pad), 100cqh - 2 * var(--pad) - var(--lcd-h) - var(--keys-h) - var(--knob-min) - 3 * var(--gap));
-}
-.stage[data-layout="wide"] .plinth {
-  grid-template: "deck lcd" var(--lcd-h) "deck keys" var(--keys-h) "deck knob" minmax(0, 1fr) / var(--deck) minmax(0, 1fr);
-  --deck: min(100cqh - 2 * var(--pad), 100cqw - 2 * var(--pad) - var(--gap) - var(--col));
+  display: grid; place-content: center;
+  grid-template: "box" var(--box) "now" var(--now-h) "ctl" var(--ctl-h) / var(--box);
 }
 
-/* ---------- LCD (Dacx's now-playing strip, grown into a display) ---------- */
-.lcd {
-  grid-area: lcd; min-width: 0;
-  display: flex; flex-direction: column; justify-content: center; gap: 8px;
-  padding: 10px 16px; border-radius: 14px;
-  background: var(--lcd); border: 1px solid #1c1c23;
+/* The turntable's own box: a plinth tinted by the album, with a bevelled edge and a little grain. */
+.deck-box {
+  grid-area: box; place-self: center;
+  width: var(--box); height: var(--box);
+  --deck: calc(var(--box) * .9);
+  padding: calc(var(--box) * .05);
+  border-radius: calc(var(--box) * .05);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+    linear-gradient(150deg, color-mix(in oklab, var(--plinth-1) 82%, #000), color-mix(in oklab, var(--plinth-2) 78%, #000));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .1), inset 0 0 0 1px rgb(255 255 255 / .035), inset 0 -2px 0 rgb(0 0 0 / .35),
+    0 2px 0 rgb(0 0 0 / .55), 0 34px 60px -24px rgb(0 0 0 / .9);
+  touch-action: none; user-select: none; -webkit-user-select: none;
 }
-.lcd-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; }
-.lcd-eq { display: flex; align-items: flex-end; gap: 2px; width: 18px; height: 16px; }
-.lcd-eq i { flex: 1; height: 3px; border-radius: 1px; background: var(--text-3); }
-body[data-phase="playing"] .lcd-eq i { background: var(--accent); animation: eq-bar .8s ease-in-out infinite alternate; }
-.lcd-eq i:nth-child(2) { animation-delay: -.45s !important; }
-.lcd-eq i:nth-child(3) { animation-delay: -.2s !important; }
-.lcd-eq i:nth-child(4) { animation-delay: -.65s !important; }
-@keyframes eq-bar { from { height: 3px; } to { height: 16px; } }
-.meta { min-width: 0; }
-.meta h1 { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.meta p { margin: 1px 0 0; color: var(--text-2); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lcd-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: min(240px, 34cqw); min-width: 0; }
-.lcd-src { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3); }
-.up-next { margin: 0; max-width: 100%; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.progress { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+/* What's on the turntable, like the original: title, artist, then the seek strip. */
+.now { grid-area: now; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.now > * { flex: none; }
+.now-src { margin: 0 0 4px; min-height: 12px; font-size: 9.5px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-3); }
+.now h1 { margin: 0; max-width: 100%; font-size: clamp(18px, 2.6cqh, 24px); font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#artist { margin: 2px 0 0; max-width: 100%; color: var(--text-2); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.up-next { margin: 6px 0 0; min-height: 15px; max-width: 100%; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.progress { width: 100%; margin-top: 10px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
 .time { font-family: var(--dots); font-variation-settings: var(--dots-round); font-weight: 900; font-size: 16px; color: var(--text); font-variant-numeric: tabular-nums; min-width: 3.4ch; line-height: 1; }
 #tDur { color: var(--text-2); text-align: right; }
 
@@ -181,16 +169,16 @@ body[data-phase="playing"] .lcd-eq i { background: var(--accent); animation: eq-
 .seek::-webkit-slider-runnable-track {
   height: 8px; border-radius: 2px;
   background:
-    repeating-linear-gradient(90deg, transparent 0 3px, var(--lcd) 3px 5px),
+    repeating-linear-gradient(90deg, transparent 0 3px, var(--bg) 3px 5px),
     linear-gradient(to right, var(--accent) var(--p), #23232a var(--p));
 }
 .seek::-moz-range-track {
   height: 8px; border-radius: 2px;
-  background: repeating-linear-gradient(90deg, transparent 0 3px, var(--lcd) 3px 5px), #23232a;
+  background: repeating-linear-gradient(90deg, transparent 0 3px, var(--bg) 3px 5px), #23232a;
 }
 .seek::-moz-range-progress {
   height: 8px; border-radius: 2px;
-  background: repeating-linear-gradient(90deg, transparent 0 3px, var(--lcd) 3px 5px), var(--accent);
+  background: repeating-linear-gradient(90deg, transparent 0 3px, var(--bg) 3px 5px), var(--accent);
 }
 .seek::-webkit-slider-thumb {
   -webkit-appearance: none; width: 3px; height: 16px; margin-top: -4px; border-radius: 1px;
@@ -200,11 +188,6 @@ body[data-phase="playing"] .lcd-eq i { background: var(--accent); animation: eq-
 .seek:hover::-webkit-slider-thumb, .seek:active::-webkit-slider-thumb { transform: scaleX(1.6); }
 
 /* ---------- The turntable ---------- */
-.deck-wrap {
-  grid-area: deck; place-self: center;
-  width: var(--deck); height: var(--deck);
-  touch-action: none; user-select: none; -webkit-user-select: none;
-}
 .deck {
   /* Geometry in deck units (the deck is 100 × 100). deck.js reads these, and the
      plinth drawing in index.html uses the same numbers. */
@@ -292,6 +275,17 @@ body[data-phase="playing"] .lcd-eq i { background: var(--accent); animation: eq-
   box-shadow: 0 0 0 calc(var(--u) * .22) rgb(0 0 0 / .4);
 }
 
+/* The rubber mat under the record: what you see when the platter is empty. */
+.mat {
+  left: calc((var(--cx) - var(--rr)) * 1%); top: calc((var(--cy) - var(--rr)) * 1%);
+  width: calc(var(--rr) * 2%); height: calc(var(--rr) * 2%);
+  border-radius: 50%; pointer-events: none;
+  background: repeating-radial-gradient(circle, #141417 0 2px, #1c1c20 2px 3.5px);
+  box-shadow: inset 0 0 0 calc(var(--u) * .5) rgb(0 0 0 / .35);
+}
+/* No record on the platter, or one on its way: the real one hides while a copy flies. */
+.deck.empty .disc, .deck.empty .sheen, .deck.swapping .disc, .deck.swapping .sheen { opacity: 0; pointer-events: none; }
+
 /* Tonearm: rotates around its pivot; the shadow drifts away as it lifts. */
 .arm {
   left: calc((var(--px) - 14) * 1%); top: calc((var(--py) - 22) * 1%);
@@ -306,7 +300,13 @@ body[data-phase="playing"] .lcd-eq i { background: var(--accent); animation: eq-
 .deck.dragging, .deck.dragging .arm-hit { cursor: grabbing; }
 
 /* ---------- Keys (Dacx: tall flat keys, caps label, an LED in the corner) ---------- */
-.keys { grid-area: keys; display: flex; gap: 10px; min-width: 0; }
+.controls { grid-area: ctl; min-width: 0; display: flex; align-items: center; gap: 14px; }
+.keys { flex: 1; align-self: stretch; display: flex; gap: 10px; min-width: 0; container: keys / inline-size; }
+/* Narrow keys keep their icon and LED; the printed label goes when it can't fit. */
+@container keys (max-width: 430px) {
+  .key-label { display: none; }
+  .key .i { margin-bottom: 0; }
+}
 .key {
   flex: 1; min-width: 0; position: relative;
   display: grid; place-items: center;
@@ -332,43 +332,99 @@ body[data-phase="playing"] .key-play .led { background: var(--ok); }
 body[data-phase="loading"] .key-play .led { background: var(--ok); animation: blink 1s steps(2, jump-none) infinite; }
 body[data-phase="paused"] .key-play .led { background: var(--warn); }
 
-/* ---------- Volume knob (Dacx: one plain circle until you hold it) ---------- */
-.knob-cell { grid-area: knob; min-width: 0; min-height: 0; container-type: size; display: grid; place-items: end center; }
-.stage[data-layout="wide"] .knob-cell, .stage[data-layout="narrow"] .knob-cell { place-items: center; }
+/* ---------- Volume knob: a real one. Knurled aluminium skirt, black cap, one white dot ---------- */
 .knob {
-  position: relative; border-radius: 50%; touch-action: none; outline: none; cursor: grab;
-  width: min(100cqw, 100cqh, 240px); height: min(100cqw, 100cqh, 240px);
+  position: relative; flex: none; width: var(--knob); height: var(--knob);
+  border-radius: 50%; cursor: grab; touch-action: none; outline: none;
+  box-shadow: 0 9px 16px -5px rgb(0 0 0 / .75), 0 2px 4px rgb(0 0 0 / .6);
 }
-.knob-ring { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .32s; }
-.knob-ring line { stroke: #2a2a31; stroke-width: 1.7; stroke-linecap: round; }
-.knob-ring line.on { stroke: var(--accent); }
-.knob.muted .knob-ring line.on { stroke: var(--text-3); }
-.knob-body {
-  position: absolute; inset: 15%; border-radius: 50%;
-  background: var(--knob); border: 1px solid rgb(255 255 255 / .08);
-  transform: rotate(var(--turn, 0deg)) scale(var(--grow, 1));
-  transition: transform .32s var(--ease);
+.knob > span { position: absolute; border-radius: 50%; }
+.knob-skirt {
+  inset: 0;
+  background:
+    repeating-conic-gradient(rgb(0 0 0 / .3) 0 2deg, rgb(255 255 255 / .12) 2deg 4deg),
+    conic-gradient(from 200deg, #6c6d72, #d8d9dd 12%, #84858a 26%, #c4c5c9 40%, #636469 52%, #d0d1d5 64%, #7b7c81 78%, #bebfc3 90%, #6c6d72);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .45);
 }
-.knob-dot { position: absolute; left: 47%; top: 6%; width: 6%; height: 6%; border-radius: 50%; background: #fff; transition: background .2s; }
-.knob.muted .knob-dot { background: var(--warn); }
-.knob-value {
-  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
-  font-family: var(--dots); font-variation-settings: var(--dots-round); font-weight: 800; font-size: clamp(18px, 18cqmin, 44px); color: var(--text);
-  opacity: 0; transition: opacity .32s;
+.knob-cap {
+  inset: 12%;
+  background:
+    repeating-radial-gradient(circle, rgb(255 255 255 / .03) 0 1px, transparent 1px 2px),
+    conic-gradient(from 200deg, #17171a, #303036 12%, #19191c 26%, #28282d 40%, #131316 52%, #2d2d33 64%, #18181b 78%, #26262b 90%, #17171a);
+  box-shadow: inset 0 1px 1px rgb(255 255 255 / .2), inset 0 -1px 2px rgb(0 0 0 / .6), 0 0 0 1px rgb(0 0 0 / .6), 0 1px 2px rgb(0 0 0 / .5);
 }
-.knob.muted .knob-value { font-family: var(--font); font-size: clamp(10px, 6cqmin, 13px); font-weight: 700; letter-spacing: .16em; color: var(--warn); }
-.knob-end { position: absolute; bottom: 6%; font-size: 18px; font-weight: 300; color: var(--text-2); opacity: 0; transition: opacity .32s; pointer-events: none; }
-.knob-end.minus { left: 11%; }
-.knob-end.plus { right: 11%; }
-.knob.held { --grow: 1.15; cursor: grabbing; }
-.knob.held .knob-ring, .knob.held .knob-value, .knob.held .knob-end,
-.knob:focus-visible .knob-ring, .knob:focus-visible .knob-value, .knob:focus-visible .knob-end { opacity: 1; transition-duration: .18s; }
-.knob.held .knob-body, .knob:focus-visible .knob-body { transition-duration: .18s; }
+/* Only this layer turns: the light on the metal stays where the room's light is. */
+.knob-turn { inset: 12%; transform: rotate(var(--turn, 0deg)); }
+.knob-dot {
+  position: absolute; left: 44%; top: 8%; width: 12%; height: 12%; border-radius: 50%;
+  background: #fff; box-shadow: inset 0 -1px 1px rgb(0 0 0 / .3), 0 0 0 1px rgb(0 0 0 / .3);
+  transition: background .2s;
+}
+.knob.muted .knob-dot { background: #55555d; }
+.knob.turning { cursor: grabbing; }
+.knob:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+/* ---------- 2. The crate: one sleeve per song, spines out ---------- */
+.crate { grid-area: crate; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--bin); border-left: 1px solid var(--line); }
+.crate-head { margin: 0; padding: 18px 16px 10px; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
+.crate-list {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 3px; padding: 4px 12px 16px;
+  scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent;
+}
+.sleeve {
+  position: relative; flex: none; height: 30px; overflow: hidden;
+  display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  border-radius: 3px; background: #1b1b20; color: #fff; text-align: left;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), inset 0 -1px 0 rgb(0 0 0 / .55), 0 1px 2px rgb(0 0 0 / .5);
+  transition: transform .22s var(--ease), opacity .2s;
+}
+.sleeve img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; opacity: .6; }
+.sleeve::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(0 0 0 / .6), rgb(0 0 0 / .2)); }
+.sleeve-no, .sleeve-title { position: relative; z-index: 1; }
+.sleeve-no { flex: none; font-family: var(--dots); font-variation-settings: var(--dots-round); font-weight: 900; font-size: 11px; color: rgb(255 255 255 / .7); }
+.sleeve-title { flex: 1; min-width: 0; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgb(0 0 0 / .7); }
+/* Pulled halfway out, toward the turntable. */
+.sleeve:hover, .sleeve.peek { transform: translateX(-8px); }
+/* Its record is on the turntable: an empty sleeve, marked with the accent. */
+.sleeve.on-deck { opacity: .5; }
+.sleeve.on-deck::before { content: ''; position: absolute; z-index: 2; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.crate-note { margin: 10px 2px 0; font-size: 12px; line-height: 1.5; color: var(--text-3); }
+
+/* The look you get when you pull one out: the sleeve, its record sliding out toward the deck. */
+.crate-preview {
+  position: fixed; z-index: 40; left: 0; top: 0; width: 232px; padding: 14px;
+  border-radius: 16px; background: #0f0f13; border: 1px solid var(--line-2);
+  box-shadow: 0 24px 60px -10px rgb(0 0 0 / .85);
+  opacity: 0; transform: translateX(12px) scale(.97); pointer-events: none; cursor: pointer;
+  transition: opacity .18s, transform .24s var(--ease);
+}
+.crate-preview.show { opacity: 1; transform: none; pointer-events: auto; }
+.cp-media { position: relative; height: 152px; margin-bottom: 12px; }
+.cp-sleeve { position: absolute; right: 0; top: 0; width: 152px; height: 152px; object-fit: cover; border-radius: 3px; background: #1b1b20; box-shadow: 0 8px 18px rgb(0 0 0 / .6), inset 0 0 0 1px rgb(255 255 255 / .08); }
+.cp-media .mini-record { position: absolute; right: 5px; top: 5px; width: 142px; height: 142px; transition: transform .5s var(--ease) .06s; }
+.crate-preview.show .mini-record { transform: translateX(-58px) rotate(-40deg); }
+.cp-title { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cp-artist { margin: 2px 0 0; font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cp-hint { margin: 10px 0 0; font-size: 9.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+.crate-preview.on-deck .cp-hint { color: var(--text-3); }
+
+/* A record out of its sleeve: in the preview, and flying between the crate and the platter. */
+.mini-record {
+  display: block; border-radius: 50%;
+  background:
+    conic-gradient(from 300deg, transparent 0 20deg, rgb(255 255 255 / .13) 35deg, transparent 52deg 200deg, rgb(255 255 255 / .09) 215deg, transparent 232deg),
+    repeating-radial-gradient(circle, #0c0c0e 0 1.2px, #18181b 1.2px 2.3px);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / .06), 0 6px 18px rgb(0 0 0 / .5);
+}
+.mini-label { position: absolute; inset: 33%; border-radius: 50%; background: var(--accent) center / cover no-repeat; box-shadow: 0 0 0 1px rgb(0 0 0 / .45); }
+.mini-label::after { content: ''; position: absolute; left: 45%; top: 45%; width: 10%; height: 10%; border-radius: 50%; background: #0b0b0d; }
+.flying { position: fixed; z-index: 45; pointer-events: none; will-change: transform, opacity; box-shadow: 0 0 0 1px rgb(255 255 255 / .05), 0 26px 50px rgb(0 0 0 / .6); }
 
 /* ---------- Panel (sidebar on desktop, bottom sheet on phone/tablet) ---------- */
 .panel {
-  display: flex; flex-direction: column; min-height: 0;
-  background: var(--bg); border-left: 1px solid var(--line);
+  grid-area: panel; display: flex; flex-direction: column; min-height: 0;
+  background: var(--side); border-left: 1px solid var(--line);
 }
 .tabs { display: flex; gap: 4px; padding: 12px 12px 8px; }
 .tab {
@@ -467,13 +523,12 @@ body[data-phase="playing"] .eq i { animation-play-state: running; }
 
 /* ---------- Listening rooms ---------- */
 .room-pill {
-  writing-mode: vertical-rl;
-  display: inline-flex; align-items: center; gap: 8px; width: 34px; padding: 12px 0; border-radius: 12px;
+  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; margin-right: 4px; border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 16%, var(--bg)); color: var(--text);
   font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
   position: relative;
 }
-.room-pill.unread::after { content: ''; position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); }
+.room-pill.unread::after { content: ''; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff5a5f; flex: none; animation: blink 1.6s steps(2, jump-none) infinite; }
 body.in-room #btnRoom { color: var(--accent); }
 
@@ -515,7 +570,7 @@ body.in-room #btnRoom { color: var(--accent); }
 /* ---------- Video & helper players ---------- */
 .video-dock {
   position: fixed; z-index: 15;
-  right: 12px; top: calc(env(safe-area-inset-top) + 112px); width: 176px; aspect-ratio: 16 / 9;
+  right: 12px; top: calc(env(safe-area-inset-top) + 72px); width: 200px; aspect-ratio: 16 / 9;
   border-radius: 12px; overflow: hidden; background: #000;
   border: 1px solid var(--line-2); box-shadow: 0 18px 40px -10px rgb(0 0 0 / .7);
   transition: opacity .3s, transform .3s var(--ease);
@@ -566,19 +621,17 @@ kbd { font-family: inherit; font-size: 11.5px; padding: 1px 6px; border-radius: 
 .lan .lan-text { flex: 1; min-width: 200px; }
 .lan .big { font-size: 16px; color: var(--text); margin: 4px 0; }
 
-/* ---------- Layout: desktop (rail | deck | sidebar) ---------- */
-@media (min-width: 960px) {
-  :root { --panel-w: clamp(340px, 27vw, 420px); }
-  .app { grid-template-columns: 64px minmax(0, 1fr) var(--panel-w); }
-  .plinth { --col: 400px; }
+/* ---------- Layout: desktop, the three parts side by side ---------- */
+@media (min-width: 1180px) {
   .sheet-only { display: none !important; }
   .video-dock { top: auto; right: 16px; bottom: 16px; width: calc(var(--panel-w) - 33px); }
   body.video-on .panel .tab-body { padding-bottom: calc((var(--panel-w) - 33px) * 9 / 16 + 28px); }
 }
 
-/* ---------- Layout: phone & tablet (rail | deck, bottom sheet) ---------- */
-@media (max-width: 959px) {
-  .plinth { --pad: 14px; --gap: 12px; --lcd-h: 88px; --keys-h: 100px; }
+/* ---------- Smaller screens: player and crate, everything else in a bottom sheet ---------- */
+@media (max-width: 1179px) {
+  .app { grid-template-columns: minmax(0, 1fr) var(--crate-w); grid-template-areas: "head head" "player crate"; }
+  .topbar { border-left: 0; border-bottom: 1px solid var(--line); padding: 8px 10px 8px 18px; }
   .panel {
     position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
     height: min(80vh, 760px); height: min(80dvh, 760px);
@@ -593,37 +646,55 @@ kbd { font-family: inherit; font-size: 11.5px; padding: 1px 6px; border-radius: 
   .scrim { position: fixed; inset: 0; z-index: 29; background: rgb(0 0 0 / .55); opacity: 0; pointer-events: none; transition: opacity .3s; }
   .scrim.show { opacity: 1; pointer-events: auto; }
 }
-@media (min-width: 700px) and (max-width: 959px) {
+@media (min-width: 700px) and (max-width: 1179px) {
   .panel { left: 50%; right: auto; width: 640px; margin-left: -320px; }
-  .video-dock { width: 240px; }
-}
-@media (max-width: 600px) {
-  .plinth { --lcd-h: 84px; --keys-h: 92px; }
-  .lcd { padding: 10px 12px; }
-  .lcd-top { gap: 10px; }
-  .meta h1 { font-size: 16.5px; }
-  .meta p { font-size: 13px; }
-  .up-next { display: none; }
-  .keys { gap: 7px; }
-  .key { border-radius: 12px; }
-  .key .i { width: 24px; height: 24px; margin-bottom: 12px; }
-  .key-play .i { width: 28px; height: 28px; }
-  .key-label { font-size: 9px; letter-spacing: .12em; bottom: 10px; }
-  .key .led { top: 8px; right: 8px; width: 5px; height: 5px; }
-  .tab .i { display: none; }
 }
 
-/* Short screens (landscape phones): the side rail tightens up */
-@media (max-height: 560px) {
-  .rail { padding: 8px 0 10px; gap: 2px; }
-  .brand { margin-bottom: 4px; }
-  .rail-word { display: none; }
-  .rail-nav .icon-btn { width: 40px; height: 38px; }
-  .plinth { --pad: 10px; --gap: 10px; --lcd-h: 80px; --keys-h: 84px; }
+/* ---------- Phones (portrait): the crate runs along the bottom, records standing up ---------- */
+@media (max-width: 759px) and (min-height: 561px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) clamp(104px, 18vh, 150px); grid-template-areas: "head" "player" "crate"; }
+  .player-grid { --pad: 14px; --gap: 12px; --now-h: 98px; --ctl-h: 72px; --knob: 56px; }
   .up-next { display: none; }
+  .crate { border-left: 0; border-top: 1px solid var(--line); }
+  .crate-head { padding: 8px 14px 4px; }
+  .crate-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 4px 12px 10px; }
+  .sleeve { width: 34px; height: 100%; writing-mode: vertical-rl; padding: 10px 0; }
+  .sleeve::after { background: linear-gradient(180deg, rgb(0 0 0 / .6), rgb(0 0 0 / .2)); }
+  .sleeve:hover, .sleeve.peek { transform: translateY(-6px); }
+  .sleeve.on-deck::before { top: 0; left: 0; right: 0; bottom: auto; width: auto; height: 3px; }
+  .crate-note { flex: none; width: 150px; margin: 0 0 0 10px; align-self: center; }
+  .video-dock { width: 168px; }
+}
+@media (max-width: 600px) {
+  .keys { gap: 6px; }
+  .controls { gap: 10px; }
+  .key { border-radius: 12px; }
+  .key .i { width: 22px; height: 22px; margin-bottom: 12px; }
+  .key-play .i { width: 26px; height: 26px; }
+  .key-label { font-size: 8.5px; letter-spacing: .06em; bottom: 9px; }
+  .key .led { top: 7px; right: 7px; width: 5px; height: 5px; }
+  .tab .i { display: none; }
+  .brand-word { font-size: 15px; }
+  .top-actions .icon-btn { width: 38px; height: 38px; }
+}
+
+/* ---------- Landscape phones: the turntable on the left, the rest beside it ---------- */
+@media (max-height: 560px) and (orientation: landscape) {
+  :root { --crate-w: 132px; }
+  .app { grid-template-columns: minmax(0, 1fr) var(--crate-w); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "head crate" "player crate"; }
+  .topbar { padding: 4px 8px 4px 14px; }
+  .top-actions .icon-btn { width: 38px; height: 36px; }
+  .player-grid {
+    --pad: 10px; --gap: 14px; --now-h: 98px; --ctl-h: 66px; --knob: 54px;
+    --box: min(100cqh - 2 * var(--pad), 100cqw - 2 * var(--pad) - var(--gap) - 250px);
+    grid-template: "box ." minmax(0, 1fr) "box now" var(--now-h) "box ctl" var(--ctl-h) "box ." minmax(0, 1fr) / var(--box) minmax(250px, 400px);
+  }
+  .up-next { display: none; }
+  .crate-head { padding: 12px 12px 8px; }
+  .crate-list { padding: 2px 8px 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eq i, .lcd-eq i { animation: none !important; }
-  .sheen { transition: none; }
+  .eq i { animation: none !important; }
+  .sheen, .sleeve, .crate-preview, .cp-media .mini-record { transition: none; }
 }

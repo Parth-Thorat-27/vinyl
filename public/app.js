@@ -150,6 +150,7 @@ function applyMeta(id) {
     if (tEl && tEl.textContent === 'Loading…') tEl.textContent = m.t;
     if (aEl && !aEl.textContent) aEl.textContent = m.a;
   }
+  crateMeta(id);
   if (S.queue[S.index]?.id === id) updateNowPlaying();
   else updateUpNext();
 }
@@ -542,7 +543,7 @@ function updateNowPlaying() {
   syncVideoDock();
   if (!t) {
     $('#title').textContent = 'Drop the needle';
-    $('#artist').textContent = 'Paste a YouTube Music or Spotify link to start';
+    $('#artist').textContent = 'Pick a record from the crate';
     document.title = 'Vinyl';
     if (shownArt) setArt(null);
     setRange($('#seek'), 0, 1000); $('#tCur').textContent = $('#tDur').textContent = '0:00';
@@ -630,6 +631,7 @@ function renderQueue() {
   metaObserver.disconnect();
   list.replaceChildren();
   $('#queueCount').textContent = S.queue.length ? `· ${S.queue.length}` : '';
+  renderCrate();
   if (!S.queue.length) { list.append(empty('Your queue is empty', 'Paste a YouTube Music or Spotify link in Library to fill it.')); return; }
   const frag = document.createDocumentFragment();
   S.queue.forEach((t, i) => {
@@ -1172,6 +1174,7 @@ roomBoot();
 selectTab(((t) => (t === 'room' ? 'queue' : t))(store.get('tab', S.queue.length ? 'queue' : 'library')));
 updateNowPlaying();
 deckBoot();
+crateBoot();
 
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* offline shell is optional */ });

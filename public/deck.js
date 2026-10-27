@@ -9,7 +9,9 @@
    - The tonearm follows the song like a real stylus, lifts to travel, and can be
      picked up and dropped anywhere on the record to seek.
    - The strobe marks on the platter rim stand still once it reaches 33⅓.
-   - The volume knob from Dacx: plain at rest, hold and turn it, tap to mute.
+   - Changing songs changes the record: the old one goes back to its sleeve in
+     the crate (crate.js), the new one comes out and drops onto the platter.
+   - The volume knob is a real one: only its white dot turns. Press it to mute.
    Loaded before app.js; uses its globals (S, phase, eng, userSeek…) at call
    time, and app.js calls deckBoot(), deckSync() and knobRender().
    ========================================================================= */
@@ -22,11 +24,12 @@ const GROOVE_END = 0.405;           // of the record's radius
 const deckCalm = matchMedia('(prefers-reduced-motion: reduce)');
 
 const Deck = {
-  el: null, stage: null, disc: null, vinyl: null, sheen: null, arm: null, shadow: null, strobes: [],
+  el: null, disc: null, vinyl: null, sheen: null, arm: null, shadow: null, strobes: [],
   geo: null, u: 1,
   angle: 0, omega: 0, strobe: 0,
   armAngle: ARM_REST, lift: 0, drag: null, hold: null,
   running: false, last: 0, track: null, pressed: '', pressTimer: null,
+  record: null, booted: false, flights: [], flyFrom: null, swapUntil: 0,
 };
 
 /* ---------- geometry ---------- */
@@ -165,7 +168,9 @@ function deckFrame(now) {
   const dt = Math.min(0.05, Math.max(0, (now - Deck.last) / 1000));
   Deck.last = now;
   const calm = deckCalm.matches;
-  const motor = phase === 'playing' || phase === 'loading';
+  // While a record is being changed the platter stops and the arm waits on its rest.
+  const swapping = now < Deck.swapUntil;
+  const motor = !swapping && (phase === 'playing' || phase === 'loading');
   const speed = calm ? DECK_SPIN / 4 : DECK_SPIN;
 
   // Platter: a strong motor, a gentler brake.
@@ -181,6 +186,7 @@ function deckFrame(now) {
   const t = S.queue[S.index];
   let aim = ARM_REST, cue = 0;
   if (Deck.drag) { aim = Deck.drag.angle; cue = 1; }
+  else if (swapping) cue = 1;
   else if (t && phase !== 'idle') {
     const E = eng(), d = E.ready() ? E.duration() : 0;
     aim = armAt(d > 0 ? Math.min(1, E.time() / d) : 0);
@@ -209,7 +215,7 @@ function deckFrame(now) {
   Deck.shadow.style.transform = `translate(${((0.4 + 1.5 * lift) * u).toFixed(2)}px, ${((0.7 + 2.4 * lift) * u).toFixed(2)}px) rotate(${rot}deg)`;
   Deck.shadow.style.opacity = (0.55 - 0.25 * lift).toFixed(3);
 
-  const settled = !motor && !Deck.omega && !Deck.drag && !Deck.hold
+  const settled = !motor && !swapping && !Deck.omega && !Deck.drag && !Deck.hold
     && Math.abs(gap) < 0.02 && Math.abs(cue - Deck.lift) < 0.003;
   if (settled) { Deck.running = false; return; }
   requestAnimationFrame(deckFrame);
@@ -234,7 +240,8 @@ function armDown(e) {
   if (e.button > 0) return;
   e.stopPropagation(); // not a swipe or a tap on the record
   e.preventDefault();
-  if (!S.queue[S.index]) { toast('Add some music first'); return; }
+  if (!S.queue[S.index]) { toast('Pick a record from the crate first'); return; }
+  if (performance.now() < Deck.swapUntil) return; // the record is still landing
   if (roomIsGuest() && !Room.settings.allowControl) { toast('Only the host controls playback in this room.'); return; }
   e.currentTarget.setPointerCapture(e.pointerId);
   Deck.drag = { id: e.pointerId, angle: Deck.armAngle };
@@ -269,25 +276,59 @@ function armUp(e, cancelled = false) {
   deckWake();
 }
 
-/* ---------- layout ---------- */
-// Pick whichever arrangement gives the biggest turntable (the same sums as .plinth in style.css):
-// wide = controls in a column beside the deck, tall = knob beside the deck,
-// narrow = everything stacked.
-function deckLayout() {
-  const st = Deck.stage, cs = getComputedStyle(st.firstElementChild);
-  const v = (p) => parseFloat(cs.getPropertyValue(p)) || 0;
-  const W = st.clientWidth - 2 * v('--pad'), H = st.clientHeight - 2 * v('--pad'), gap = v('--gap');
-  const stack = v('--lcd-h') + v('--keys-h');
-  const size = {
-    wide: Math.min(H, W - gap - v('--col')),
-    tall: Math.min(W - gap - v('--knob-col'), H - stack - 2 * gap),
-    narrow: Math.min(W, H - stack - v('--knob-min') - 3 * gap),
-  };
-  const mode = Object.keys(size).reduce((a, b) => (size[b] > size[a] ? b : a));
-  if (st.dataset.layout !== mode) st.dataset.layout = mode;
+/* ---------- changing records ---------- */
+// The old record goes back to its sleeve in the crate, the new one comes out of
+// its sleeve and drops onto the platter. Playback has already started; the arm
+// waits on its rest until the record has landed.
+const discCircle = () => {
+  const r = Deck.el.getBoundingClientRect(), g = Deck.geo, s = r.width / 100;
+  return { x: r.left + g.cx * s, y: r.top + g.cy * s, d: g.rr * 2 * s };
+};
+function sleeveCircle(t) {
+  const el = t && $(`.sleeve[data-key="${recordKey(t)}"]`), box = $('#crateList')?.getBoundingClientRect();
+  if (!box?.width) return null;
+  if (el) {
+    const r = el.getBoundingClientRect();
+    const inView = r.bottom > box.top && r.top < box.bottom && r.right > box.left && r.left < box.right;
+    if (inView) return circleOver(el);
+  }
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2, d: 60 };
 }
+// One flying record, drawn at the platter's size and moved with transforms only.
+function deckFly(t, disc, away, { out, duration, delay = 0 }) {
+  const label = h('span', { class: 'mini-label' }), el = h('div', { class: 'mini-record flying' }, label);
+  const art = artUrl(t);
+  if (art) label.style.backgroundImage = `url("${art}")`;
+  Object.assign(el.style, { left: `${disc.x - disc.d / 2}px`, top: `${disc.y - disc.d / 2}px`, width: `${disc.d}px`, height: `${disc.d}px` });
+  document.body.append(el);
+  const far = `translate(${(away.x - disc.x).toFixed(1)}px, ${(away.y - disc.y).toFixed(1)}px) scale(${(away.d / disc.d).toFixed(3)}) rotate(${out ? 140 : -140}deg)`;
+  const lifted = 'translateY(-1.5%) scale(1.035) rotate(-5deg)';
+  const frames = out
+    ? [{ transform: `rotate(${Deck.angle.toFixed(1)}deg)`, opacity: 1 }, { transform: lifted, opacity: 1, offset: 0.25 }, { transform: far, opacity: 0 }]
+    : [{ transform: far, opacity: 0 }, { opacity: 1, offset: 0.12 }, { transform: lifted, opacity: 1, offset: 0.78 }, { transform: 'none', opacity: 1 }];
+  const a = el.animate(frames, { duration, delay, fill: 'both', easing: out ? 'cubic-bezier(.45,0,.7,.35)' : 'cubic-bezier(.22,.8,.3,1)' });
+  const done = () => { el.remove(); Deck.flights = Deck.flights.filter((x) => x !== a); };
+  a.finished.then(done, done);
+  Deck.flights.push(a);
+  return a;
+}
+function deckSwap(prev, next) {
+  for (const a of [...Deck.flights]) a.finish();
+  const from = Deck.flyFrom;
+  Deck.flyFrom = null;
+  if (deckCalm.matches || !Deck.geo) return;
+  const disc = discCircle(), offstage = { x: innerWidth + disc.d, y: disc.y, d: disc.d };
+  Deck.swapUntil = performance.now() + (next ? 1000 : 500);
+  if (prev) deckFly(prev, disc, sleeveCircle(prev) || offstage, { out: true, duration: 480 });
+  if (next) {
+    Deck.el.classList.add('swapping');
+    const landed = () => { Deck.el.classList.remove('swapping'); Deck.angle = 0; deckWake(); };
+    deckFly(next, disc, from || sleeveCircle(next) || offstage, { duration: 780, delay: prev ? 170 : 0 }).finished.then(landed, landed);
+  }
+  deckWake();
+}
+
 function deckResize() {
-  deckLayout();
   Deck.geo = deckGeo();
   Deck.u = Deck.el.clientWidth / 100;
   clearTimeout(Deck.pressTimer);
@@ -295,40 +336,33 @@ function deckResize() {
   deckWake();
 }
 
-/* ---------- volume knob ---------- */
+/* ---------- volume knob: a real one, only its white dot shows the level ---------- */
 const KNOB_FROM = 135, KNOB_SWEEP = 270; // from bottom-left, over the top, to bottom-right
-const Knob = { el: null, ticks: [], pointer: null, drag: null, last: 0, down: null, turning: false, reveal: null, flash: null };
+const Knob = { el: null, pointer: null, drag: null, last: 0, down: null, turning: false };
 
 function knobAngle(e) {
   const r = Knob.el.getBoundingClientRect();
   return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
 }
-function knobShow(on) {
-  clearTimeout(Knob.reveal);
-  Knob.el.classList.toggle('held', on);
-}
 function knobDown(e) {
   if (Knob.pointer != null || e.button > 0) return;
-  const r = Knob.el.getBoundingClientRect();
-  if (Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) > r.width / 2) return;
   Knob.pointer = e.pointerId;
   Knob.el.setPointerCapture(e.pointerId);
   Knob.down = { x: e.clientX, y: e.clientY, t: performance.now() };
   Knob.turning = false;
   Knob.last = knobAngle(e);
-  Knob.reveal = setTimeout(() => knobShow(true), 140);
 }
 function knobMove(e) {
   if (e.pointerId !== Knob.pointer) return;
   if (!Knob.turning) {
-    if (Math.hypot(e.clientX - Knob.down.x, e.clientY - Knob.down.y) < 8) return;
+    if (Math.hypot(e.clientX - Knob.down.x, e.clientY - Knob.down.y) < 6) return;
     Knob.turning = true;
     Knob.drag = S.volume;
-    knobShow(true);
+    Knob.el.classList.add('turning');
   }
   // Near the centre a tiny move swings the angle wildly, so ignore it.
   const r = Knob.el.getBoundingClientRect();
-  if (Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) < r.width * 0.08) return;
+  if (Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) < r.width * 0.12) return;
   const a = knobAngle(e);
   let delta = a - Knob.last;
   if (delta > 180) delta -= 360;
@@ -341,18 +375,12 @@ function knobMove(e) {
 function knobUp(e, cancelled = false) {
   if (e.pointerId !== Knob.pointer) return;
   Knob.pointer = null;
-  clearTimeout(Knob.reveal);
   const quick = performance.now() - Knob.down.t < 250;
-  if (!cancelled && !Knob.turning && quick) toggleMute(); // a tap mutes
+  if (!cancelled && !Knob.turning && quick) toggleMute(); // press it like a button to mute
   Knob.turning = false;
   Knob.drag = null;
-  knobShow(false);
+  Knob.el.classList.remove('turning');
   knobRender();
-}
-function knobFlash() {
-  knobShow(true);
-  clearTimeout(Knob.flash);
-  Knob.flash = setTimeout(() => { if (Knob.pointer == null) knobShow(false); }, 800);
 }
 function knobKey(e) {
   const step = { ArrowUp: 2, ArrowRight: 2, ArrowDown: -2, ArrowLeft: -2, PageUp: 10, PageDown: -10 }[e.key];
@@ -366,55 +394,45 @@ function knobKey(e) {
 }
 function knobRender() {
   if (!Knob.el) return;
-  const v = Knob.drag ?? S.volume, muted = S.muted;
+  const v = Knob.drag ?? S.volume;
   Knob.el.style.setProperty('--turn', `${(KNOB_FROM + KNOB_SWEEP * v / 100 - 270).toFixed(1)}deg`);
-  Knob.el.classList.toggle('muted', muted);
+  Knob.el.classList.toggle('muted', S.muted);
   Knob.el.setAttribute('aria-valuenow', Math.round(v));
-  Knob.el.setAttribute('aria-valuetext', muted ? 'Muted' : `${Math.round(v)}%`);
-  $('.knob-value', Knob.el).textContent = muted && Knob.drag == null ? 'Muted' : Math.round(v);
-  Knob.ticks.forEach((l, i) => {
-    const f = i / (Knob.ticks.length - 1), on = v > 0 && f <= v / 100 + 1e-6;
-    l.classList.toggle('on', on);
-    l.style.opacity = on ? (0.4 + 0.6 * f).toFixed(2) : '';
-  });
+  Knob.el.setAttribute('aria-valuetext', S.muted ? 'Muted' : `${Math.round(v)}%`);
 }
 function knobBoot() {
-  const k = Knob.el = $('#knob'), ring = $('.knob-ring', k), ns = 'http://www.w3.org/2000/svg';
-  for (let i = 0; i <= 40; i++) {
-    const a = (KNOB_FROM + KNOB_SWEEP * i / 40) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
-    const l = document.createElementNS(ns, 'line');
-    l.setAttribute('x1', (50 + c * 42.5).toFixed(2)); l.setAttribute('y1', (50 + s * 42.5).toFixed(2));
-    l.setAttribute('x2', (50 + c * 48).toFixed(2)); l.setAttribute('y2', (50 + s * 48).toFixed(2));
-    ring.append(l); Knob.ticks.push(l);
-  }
+  const k = Knob.el = $('#knob');
   k.addEventListener('pointerdown', knobDown);
   k.addEventListener('pointermove', knobMove);
   k.addEventListener('pointerup', (e) => knobUp(e));
   k.addEventListener('pointercancel', (e) => knobUp(e, true));
-  k.addEventListener('wheel', (e) => { e.preventDefault(); setVolume(S.volume + (e.deltaY < 0 ? 2 : -2)); knobFlash(); }, { passive: false });
+  k.addEventListener('wheel', (e) => { e.preventDefault(); setVolume(S.volume + (e.deltaY < 0 ? 2 : -2)); }, { passive: false });
   k.addEventListener('keydown', knobKey);
   knobRender();
 }
 
 /* ---------- boot / sync (called by app.js) ---------- */
-// Cheap enough to call often: re-presses the record when the song changes and wakes the motor.
+// Cheap enough to call often: swaps and re-presses the record when the song changes, wakes the motor.
 function deckSync() {
   if (!Deck.el) return;
-  const t = S.queue[S.index], key = t ? (t.src || 'yt') + t.id : '';
+  const t = S.queue[S.index], key = t ? recordKey(t) : '';
   if (key !== Deck.track) {
+    const prev = Deck.record;
     Deck.track = key;
+    Deck.record = t ? { ...t } : null;
     $('#lcdSrc').textContent = !t ? '' : t.src === 'sp' ? 'Spotify' : 'YouTube';
+    if (Deck.booted) deckSwap(prev, Deck.record);
     deckPress();
   }
+  Deck.el.classList.toggle('empty', !t);
   Deck.el.classList.toggle('lamp', phase !== 'idle');
   deckWake();
 }
 function deckBoot() {
-  Deck.el = $('#deck'); Deck.stage = $('.stage'); Deck.disc = $('#disc'); Deck.vinyl = $('#vinyl');
+  Deck.el = $('#deck'); Deck.disc = $('#disc'); Deck.vinyl = $('#vinyl');
   Deck.sheen = $('#sheen'); Deck.arm = $('#arm'); Deck.shadow = $('#armShadow'); Deck.strobes = $$('.strobe');
   Deck.track = null;
-  const ro = new ResizeObserver(deckResize);
-  ro.observe(Deck.stage); ro.observe(Deck.el);
+  new ResizeObserver(deckResize).observe(Deck.el);
   deckResize();
   for (const hit of $$('.arm-hit')) {
     hit.addEventListener('pointerdown', armDown);
@@ -425,4 +443,5 @@ function deckBoot() {
   window.addEventListener('pointermove', deckLight, { passive: true });
   knobBoot();
   deckSync();
+  Deck.booted = true; // from here on, a new song means changing the record
 }

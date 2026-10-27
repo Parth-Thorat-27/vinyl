@@ -94,53 +94,31 @@
   </svg>
 
   <div class="app">
-    <header class="rail">
-      <div class="brand" title="Vinyl">
+    <!-- Brand and the app's own buttons: over the sidebar on desktop, across the top on smaller screens -->
+    <header class="topbar">
+      <div class="brand">
         <svg viewBox="0 0 24 24" class="brand-mark" aria-hidden="true">
           <circle cx="12" cy="12" r="11" fill="#0b0b0d" stroke="#fff" stroke-opacity=".14" stroke-width=".6"/>
           <circle cx="12" cy="12" r="7.6" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width=".5"/>
           <circle cx="12" cy="12" r="4" fill="var(--accent)"/>
           <circle cx="12" cy="12" r=".9" fill="#0b0b0d"/>
         </svg>
-        <span class="rail-word" aria-hidden="true">VINYL</span>
+        <span class="brand-word">VINYL</span>
       </div>
-      <nav class="rail-nav" aria-label="Vinyl">
-        <button class="icon-btn sheet-only" data-open="queue" title="Queue"><svg class="i"><use href="#i-queue"/></svg></button>
+      <div class="top-actions">
+        <button class="room-pill" id="roomPill" hidden title="Open the room"><span class="live-dot"></span><span id="roomPillText">Live</span></button>
         <button class="icon-btn sheet-only" data-open="library" title="Library"><svg class="i"><use href="#i-library"/></svg></button>
         <button class="icon-btn" id="btnRoom" title="Listen together"><svg class="i"><use href="#i-group"/></svg></button>
         <button class="icon-btn" id="btnVideo" title="Show or hide video (V)" aria-pressed="false"><svg class="i"><use href="#i-video"/></svg></button>
         <button class="icon-btn" id="btnSettings" title="Settings"><svg class="i"><use href="#i-settings"/></svg></button>
-      </nav>
-      <div class="rail-foot">
-        <button class="room-pill" id="roomPill" hidden title="Open the room"><span class="live-dot"></span><span id="roomPillText">Live</span></button>
-        <span class="power" aria-hidden="true"></span>
       </div>
     </header>
 
-    <main class="stage">
-      <div class="plinth">
-        <!-- The display: what's on the deck, how far in, what's next -->
-        <section class="lcd now" aria-live="polite">
-          <div class="lcd-top">
-            <span class="lcd-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-            <div class="meta">
-              <h1 id="title">Drop the needle</h1>
-              <p id="artist">Paste a YouTube Music link to start</p>
-            </div>
-            <div class="lcd-side">
-              <span class="lcd-src" id="lcdSrc"></span>
-              <p class="up-next" id="upNext"></p>
-            </div>
-          </div>
-          <div class="progress">
-            <span id="tCur" class="time">0:00</span>
-            <input id="seek" class="range seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
-            <span id="tDur" class="time">0:00</span>
-          </div>
-        </section>
-
-        <div class="deck-wrap" id="deckWrap">
-          <div id="deck" class="deck no-art" role="img" aria-label="Turntable. Tap the record to play or pause, swipe to skip, drag the tonearm to move through the song.">
+    <!-- 1. The player: the turntable in its box, what's playing, then the keys and the knob -->
+    <main class="player">
+      <div class="player-grid">
+        <div class="deck-box" id="deckWrap">
+          <div id="deck" class="deck no-art empty" role="img" aria-label="Turntable. Tap the record to play or pause, swipe to skip, drag the tonearm to move through the song.">
             <!-- The plate under everything, in deck units (100 × 100): platter shadow,
                  strobe lamp, tonearm base, anti-skate dial, cue lever and arm rest. -->
             <svg class="plinth-art" viewBox="0 0 100 100" aria-hidden="true">
@@ -176,6 +154,7 @@
             <div class="platter"></div>
             <div class="strobe"></div>
             <div class="strobe-lit"><div class="strobe"></div></div>
+            <div class="mat"></div>
 
             <div id="disc" class="disc">
               <canvas class="vinyl" id="vinyl"></canvas>
@@ -204,29 +183,53 @@
           </div>
         </div>
 
-        <!-- Transport keys, after Dacx's media deck -->
-        <div class="keys controls">
-          <button class="key" id="btnShuffle" title="Shuffle (S)" aria-pressed="false"><span class="led"></span><svg class="i"><use href="#i-shuffle"/></svg><span class="key-label">Shuffle</span></button>
-          <button class="key" id="btnPrev" title="Previous (P)"><svg class="i"><use href="#i-prev"/></svg><span class="key-label">Prev</span></button>
-          <button class="key key-play" id="btnPlay" title="Play / Pause (Space)"><span class="led"></span><svg class="i"><use id="playIcon" href="#i-play"/></svg><span class="key-label"><span class="if-stopped">Play</span><span class="if-playing">Pause</span></span></button>
-          <button class="key" id="btnNext" title="Next (N)"><svg class="i"><use href="#i-next"/></svg><span class="key-label">Next</span></button>
-          <button class="key" id="btnRepeat" title="Repeat (R)" aria-pressed="false"><span class="led"></span><svg class="i"><use id="repeatIcon" href="#i-repeat"/></svg><span class="key-label">Repeat</span></button>
-        </div>
+        <!-- What's on the turntable -->
+        <section class="now" aria-live="polite">
+          <p class="now-src" id="lcdSrc"></p>
+          <h1 id="title">Drop the needle</h1>
+          <p id="artist">Pick a record from the crate</p>
+          <div class="progress">
+            <span id="tCur" class="time">0:00</span>
+            <input id="seek" class="range seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+            <span id="tDur" class="time">0:00</span>
+          </div>
+          <p class="up-next" id="upNext"></p>
+        </section>
 
-        <!-- Volume knob: plain at rest, hold and turn to change, tap to mute -->
-        <div class="knob-cell">
-          <div class="knob" id="knob" role="slider" tabindex="0" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80">
-            <svg class="knob-ring" viewBox="0 0 100 100" aria-hidden="true"></svg>
-            <span class="knob-end minus" aria-hidden="true">−</span>
-            <span class="knob-end plus" aria-hidden="true">+</span>
-            <span class="knob-body"><span class="knob-dot"></span></span>
-            <span class="knob-value" aria-hidden="true"></span>
+        <!-- Transport keys (after Dacx's media deck) and a real volume knob: only its white dot moves -->
+        <div class="controls">
+          <div class="keys">
+            <button class="key" id="btnShuffle" title="Shuffle (S)" aria-pressed="false"><span class="led"></span><svg class="i"><use href="#i-shuffle"/></svg><span class="key-label">Shuffle</span></button>
+            <button class="key" id="btnPrev" title="Previous (P)"><svg class="i"><use href="#i-prev"/></svg><span class="key-label">Prev</span></button>
+            <button class="key key-play" id="btnPlay" title="Play / Pause (Space)"><span class="led"></span><svg class="i"><use id="playIcon" href="#i-play"/></svg><span class="key-label"><span class="if-stopped">Play</span><span class="if-playing">Pause</span></span></button>
+            <button class="key" id="btnNext" title="Next (N)"><svg class="i"><use href="#i-next"/></svg><span class="key-label">Next</span></button>
+            <button class="key" id="btnRepeat" title="Repeat (R)" aria-pressed="false"><span class="led"></span><svg class="i"><use id="repeatIcon" href="#i-repeat"/></svg><span class="key-label">Repeat</span></button>
+          </div>
+          <div class="knob" id="knob" role="slider" tabindex="0" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80" title="Volume: turn it, tap to mute">
+            <span class="knob-skirt"></span>
+            <span class="knob-cap"></span>
+            <span class="knob-turn"><span class="knob-dot"></span></span>
           </div>
           <input id="vol" type="range" min="0" max="100" value="80" aria-label="Volume" hidden>
           <button id="btnMute" title="Mute (M)" hidden><svg class="i"><use id="volIcon" href="#i-volume"/></svg></button>
         </div>
       </div>
     </main>
+
+    <!-- 2. The crate: every song in the queue is a record. Hover to preview, click to put it on. -->
+    <section class="crate" aria-label="Record crate">
+      <h2 class="crate-head">Crate <span class="count" id="crateCount"></span></h2>
+      <div class="crate-list" id="crateList"></div>
+    </section>
+    <div class="crate-preview" id="cratePreview" aria-hidden="true">
+      <div class="cp-media">
+        <span class="mini-record"><span class="mini-label"></span></span>
+        <img class="cp-sleeve" alt="">
+      </div>
+      <p class="cp-title"></p>
+      <p class="cp-artist"></p>
+      <p class="cp-hint"></p>
+    </div>
 
     <div class="scrim sheet-only" id="scrim"></div>
 
@@ -381,6 +384,7 @@
   <script src="spotify.js"></script>
   <script src="room.js"></script>
   <script src="deck.js"></script>
+  <script src="crate.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
