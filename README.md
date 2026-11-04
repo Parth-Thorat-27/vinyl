@@ -21,6 +21,11 @@ Then open **http://localhost:7733**. Keep the window open while you listen.
 3. The first time, Windows Firewall asks about Node.js. Allow it on **Private networks**.
 4. In the phone browser menu choose **Add to Home Screen** to get an app icon.
 
+**Want to talk in voice chat from your phone?** Browsers only allow the microphone on secure (`https://`) pages, so Vinyl also serves an https address on your Wi-Fi, which looks like `https://192-168-0-179.sslip.io:7734`. It's printed in the server window.
+- Vinyl makes its own certificate for it, using the OpenSSL that comes with Git for Windows.
+- The first time, the phone warns that the connection isn't private, because nobody vouches for a home-made certificate. Tap **Advanced → Proceed**.
+- Room invites use this address automatically.
+
 ## Add your music
 
 **Paste links (no setup).** In YouTube Music tap **Share → Copy link** on a song, album, playlist or mix, then paste it in **Library**. Playlists are remembered under *Saved*.
@@ -61,13 +66,18 @@ Spotify songs, albums, playlists and Liked Songs play on the same turntable, and
 
 Tap the **people icon** at the top, enter your name, and **Start a room**. Then hit **Invite** and send the link (or show the QR code). Whoever opens it joins your room and hears what you play, in sync, on their own phone, tablet or PC.
 
-- **Private:** only people with the link can join. The link contains a long random room code.
-  - **Lock room** stops new people joining.
-  - The **×** next to a name removes someone.
-  - **End room** closes it for everyone.
+- **Private:** only people with the link can join. The link contains a long random room code. In **Room settings** you can also:
+  - add a **PIN** (4–8 digits): people need it to get in. Wrong guesses are limited, so it can't be guessed by trying.
+  - **lock** the room so no new people can join.
+  - remove someone with the **×** next to their name.
 - **You're the DJ:** listeners follow your play, pause, skip and seek. Their own play/pause only affects their own device; pressing play again re-syncs them.
-- **Song requests (on by default):** listeners add songs from links, Search or their playlists, and the songs join the **end of the queue**. Everyone sees "added by Riya" on them, and a note appears in the chat. The host can switch requests off.
-- **Listeners can also skip, pause and seek:** off by default; the host can turn it on to share the controls.
+- **Song requests (on by default):** listeners add songs from links, Search or their playlists, and the songs join the **end of the queue**.
+  - Everyone sees "added by Riya" on them, and a note appears in the chat.
+  - Each person can have **5 songs waiting** at a time; you can change that limit or switch requests off.
+- **Vote to skip:** a listener pressing Next votes to skip the song. Once more than half of the listeners agree, it skips.
+- **Reactions:** tap 🔥 ❤️ 😂 👏 🎉 and they float up over everyone's turntable.
+- **Hand the room over:** the 👑 next to someone's name makes them the host. When you **Leave** while others are still listening, Vinyl offers to hand over so the music keeps going. If the host's connection drops for more than a minute, the room passes to someone who's still there.
+- **Shared controls:** "Listeners can also skip, pause and seek" is off by default; switch it on to let everyone run the music and reorder the queue.
 - **Chat:** the Room tab has a chat for everyone in the room.
 - **A listener's own queue** is set aside while they're in a room and restored when they leave.
 
@@ -79,21 +89,52 @@ Tap the **people icon** at the top, enter your name, and **Start a room**. Then 
 **Voice chat:** in the Room tab, tap **Join voice** to talk with everyone while the music keeps playing.
 - The music dips while someone talks, and a green ring shows who's speaking.
 - Mute with the mic button at the top.
-- Voices go directly between devices; Vinyl's server only helps them connect.
+- **Push to talk:** switch it on in the voice card. Your mic then only sends sound while you hold **T** or hold the mic button.
+- Voices go directly between devices; Vinyl's server only helps them connect. If a connection drops, Vinyl redials automatically.
 - **Headphones work best**, so the music from your speakers doesn't get picked up by your mic.
-- Browsers only allow the microphone on secure pages, so anyone joining with the plain Wi-Fi link (`http://…sslip.io`) can *hear* voice chat but not talk. Send the `https://` link from **Invite → Share over the internet** so everyone can talk, even people on your Wi-Fi.
+- Browsers only allow the microphone on secure (`https://`) pages. Invites use Vinyl's https Wi-Fi address (see above) or the internet link, so everyone can talk. People who open the plain `http://` link can still *hear* voice chat.
 - It suits a small group of friends; everyone connects to everyone, so very big rooms get heavy.
-- A few strict networks (some offices and mobile carriers) block direct connections, and Vinyl will say so if voice can't connect to someone.
+- **Strict networks:** some offices, colleges and mobile carriers block direct connections. A **voice relay** fixes that (next section).
+
+### Voice relay (optional): voice on any network
+
+A TURN relay passes voices along when two devices can't reach each other directly. Vinyl works with any of these. Pick one, and only people inside a room ever receive the relay details.
+
+1. **Metered** (free plan, simplest): sign up at metered.ca, create a TURN app, and copy the app name and API key.
+2. **Cloudflare** (free tier): create a TURN key in the Cloudflare dashboard (Calls → TURN), and copy the key ID and API token.
+3. **Your own TURN server** (for example coturn): its URLs, username and password.
+
+Copy `vinyl.config.example.json` to `vinyl.config.json` and fill in the matching fields. That file stays private, because it's in `.gitignore`. You can also set them as environment variables: `METERED_APP` + `METERED_API_KEY`, or `CF_TURN_KEY_ID` + `CF_TURN_API_TOKEN`, or `TURN_URLS` + `TURN_USERNAME` + `TURN_CREDENTIAL`. Restart Vinyl; the server window says "Voice relay (TURN): configured".
 
 **Spotify songs in a room:** each listener needs their own Spotify Premium connected to hear them. YouTube Music songs work for everyone.
 
-## Optional: host it on HTTPS (works anywhere, installable)
+## Host it in the cloud (always on, rooms without your PC)
 
-The `public/` folder is a plain static site. Drag it onto **https://app.netlify.com/drop**, or use GitHub Pages or Cloudflare Pages. You get an `https://…` address that:
-
-- works away from home, with no PC running,
+Vinyl's server has no dependencies, so free cloud hosts can run it as-is. You get a permanent `https://` address that:
+- works from anywhere with no PC running, rooms and voice chat included,
 - installs as a real app on Android, iOS, Windows and macOS,
-- allows Google and Spotify sign-in: add the new address as another authorized JavaScript origin for Google, and `https://your-site/callback.html` as a Spotify redirect URI.
+- allows Google and Spotify sign-in. Add the new address as another authorized JavaScript origin for Google, and `https://your-address/callback.html` as a Spotify redirect URI.
+
+**Render (free):**
+1. Push this repo to GitHub.
+2. In Render, choose **New → Blueprint** and pick the repo. It reads `render.yaml`.
+3. Wait for the deploy and open the address it gives you.
+
+The free plan sleeps after about 15 minutes without visitors. The first visit after that takes a moment to wake it, and any open rooms are reset.
+
+**Fly.io or Railway:** use the included `Dockerfile`. For Fly, `fly.toml` is ready: run `fly launch --copy-config`, then `fly deploy`.
+
+Cloud mode (`VINYL_CLOUD=1`, switched on automatically on these hosts) turns off the PC-only parts: Wi-Fi addresses, the Cloudflare quick link and the home-made certificate. To add a voice relay there, set the variables from the section above in the host's dashboard.
+
+Just want the player without rooms? The `public/` folder also works as a plain static site (Netlify Drop, GitHub Pages, Cloudflare Pages).
+
+## Player extras
+
+- **Reorder the queue:** drag a song by the dotted handle, or focus the handle and press ↑/↓.
+- **Synced lyrics:** the **Lyrics** tab shows the words in time with the music, from LRCLIB, a free open lyrics library. Tap a line to jump there. Songs LRCLIB doesn't know show unsynced lyrics, or a note.
+- **Crossfade:** in **Settings → Playback**, blend each YouTube song into the next over 3–12 seconds. Spotify songs use the Spotify app's own crossfade setting.
+- **Sleep timer:** in **Settings → Playback**, stop after 15/30/45/60 minutes or at the end of the song. The music fades out gently, and a 🌙 badge in the top bar shows the time left. Click the badge to change it.
+- **Recently played:** the last 60 songs you heard, under **Library**, ready to play again.
 
 ## The deck
 
@@ -141,6 +182,9 @@ Behind the whole app burns a fireside, drawn live with WebGL. Warm smoke rises a
 | `↑` `↓` | volume |
 | `N` / `P` | next / previous |
 | `S` / `R` / `M` | shuffle / repeat / mute |
+| `L` | open the lyrics |
+| hold `T` | talk (when push to talk is on) |
+| Drag a queue song's handle | reorder (or focus it and press `↑` / `↓`) |
 
 Media keys, headphone buttons and the lock-screen player also work.
 
@@ -149,4 +193,11 @@ Media keys, headphone buttons and the lock-screen player also work.
 - Playback uses YouTube's official embedded player, so a few tracks whose owners block embedding are skipped automatically.
 - On phones, mobile browsers pause YouTube when the screen locks or you switch apps. This is a browser limit, not something the app can override. Keep Vinyl in front, or use the PC as the player.
 - A pasted playlist loads up to about 200 tracks. With your account connected, there is no such limit.
-- Song titles for pasted playlists come from YouTube's public oEmbed endpoint, with noembed.com as a fallback.
+- Song titles for pasted playlists come from YouTube's public oEmbed endpoint, with noembed.com as a fallback. Lyrics are looked up on lrclib.net by song title and artist.
+- The room server limits how fast anyone can open rooms, chat, react, vote or guess PINs, so a shared link can't be used to flood it.
+
+## Tests
+
+`npm test` runs the whole suite: the room server's API, the player, listening rooms with two browsers, and voice chat with Chrome's fake microphone. The browser tests drive a real Chrome with a stand-in for YouTube, so they run offline and don't depend on YouTube.
+
+GitHub runs the same tests on every push and pull request (`.github/workflows/test.yml`), and the result shows as a ✓ or ✗ next to each commit. If Chrome isn't in a standard place, set `CHROME_PATH`.
