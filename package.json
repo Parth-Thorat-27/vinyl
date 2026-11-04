@@ -1,0 +1,14 @@
+{
+  "name": "vinyl",
+  "version": "3.0.0",
+  "private": true,
+  "description": "A turntable-style music player for YouTube Music and Spotify, with private listening rooms and voice chat.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test --test-concurrency=1 \"tests/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
