@@ -1,0 +1,22 @@
+# One-click hosting on Render (https://render.com): New > Blueprint > pick this repo.
+# Gives Vinyl a permanent https address so rooms work without your PC, and phones can use
+# their mic in voice chat. The free plan sleeps after ~15 minutes without visitors; the first
+# visit after that takes a little while to wake it (and open rooms are reset).
+services:
+  - type: web
+    name: vinyl
+    runtime: node
+    plan: free
+    buildCommand: "echo 'no build step'"
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: VINYL_CLOUD
+        value: "1"
+      - key: NODE_VERSION
+        value: "22"
+      # Optional voice relay (TURN), see vinyl.config.example.json. Set the values in Render's dashboard.
+      - key: METERED_APP
+        sync: false
+      - key: METERED_API_KEY
+        sync: false
