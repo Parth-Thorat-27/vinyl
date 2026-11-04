@@ -121,24 +121,34 @@ function stubFor(url, page) {
   return null;
 }
 
-export async function browser({ name = 'b', width = 1280, height = 860, fakeMedia = false } = {}) {
-  const port = 9300 + Math.floor(Math.random() * 600);
-  const dir = mkdtempSync(path.join(tmpdir(), `vinyl-${name}-`));
-  const args = ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, `--window-size=${width},${height}`,
-    '--autoplay-policy=no-user-gesture-required', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check',
-    ...(fakeMedia ? ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] : []),
-    ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), 'about:blank'];
-  const proc = spawn(findChrome(), args, { stdio: 'ignore' });
-  let ws;
-  for (let i = 0; i < 80 && !ws; i++) {
-    try {
-      const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-      const p = list.find((t) => t.type === 'page');
-      if (p) { ws = new WebSocket(p.webSocketDebuggerUrl); break; }
-    } catch { /* starting */ }
-    await sleep(150);
+// Start Chrome and connect to it. A cold CI machine can take a while to start the first Chrome,
+// so wait up to 30 seconds, and try once more with a fresh port and profile if it doesn't come up.
+async function launchChrome(name, width, height, fakeMedia) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const port = 9300 + Math.floor(Math.random() * 600);
+    const dir = mkdtempSync(path.join(tmpdir(), `vinyl-${name}-`));
+    const args = ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, `--window-size=${width},${height}`,
+      '--autoplay-policy=no-user-gesture-required', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check',
+      ...(fakeMedia ? ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] : []),
+      ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), 'about:blank'];
+    const proc = spawn(findChrome(), args, { stdio: 'ignore' });
+    const end = Date.now() + 30000;
+    while (Date.now() < end && proc.exitCode === null) {
+      try {
+        const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+        const p = list.find((t) => t.type === 'page');
+        if (p) return { proc, dir, ws: new WebSocket(p.webSocketDebuggerUrl) };
+      } catch { /* starting */ }
+      await sleep(200);
+    }
+    proc.kill();
+    try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
   }
-  if (!ws) { proc.kill(); throw new Error('Chrome did not start'); }
+  throw new Error('Chrome did not start');
+}
+
+export async function browser({ name = 'b', width = 1280, height = 860, fakeMedia = false } = {}) {
+  const { proc, dir, ws } = await launchChrome(name, width, height, fakeMedia);
   await new Promise((r, j) => { ws.addEventListener('open', r); ws.addEventListener('error', j); });
   let id = 0;
   const pending = new Map(), errors = [];
