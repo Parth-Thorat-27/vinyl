@@ -10,7 +10,7 @@
    ========================================================================= */
 
 const Voice = {
-  on: false, mic: null, muted: false,
+  on: false, mic: null, muted: false, talking: false, ice: null, retries: new Map(),
   peers: new Map(),           // memberId -> { pc, ice: [], audio, meter }
   ctx: null, selfMeter: null,
   speaking: new Set(),         // member ids currently talking ('self' for you)
@@ -20,6 +20,20 @@ const VOICE_ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google
 const voiceCanTalk = () => window.isSecureContext && !!navigator.mediaDevices?.getUserMedia;
 const voiceVol = () => store.get('voiceVol', 100);
 const voiceDucks = () => store.get('voiceDuck', true);
+const voicePtt = () => store.get('voicePtt', false);
+// Is your mic actually sending sound right now?
+const voiceLive = () => !!Voice.mic && (voicePtt() ? Voice.talking : !Voice.muted);
+function voiceApplyMic() {
+  Voice.mic?.getAudioTracks().forEach((t) => { t.enabled = voiceLive(); });
+}
+// Relay (TURN) settings come from the server, only for people inside the room.
+async function voiceIce() {
+  try {
+    const r = await fetch(`api/ice?room=${encodeURIComponent(Room.id)}&client=${encodeURIComponent(Room.client)}`, { cache: 'no-store' });
+    if (r.ok) { const j = await r.json(); if (Array.isArray(j.iceServers) && j.iceServers.length) return j; }
+  } catch { /* fall back to public STUN */ }
+  return { iceServers: VOICE_ICE, relay: false };
+}
 
 /* ---------- joining & leaving ---------- */
 async function voiceJoin() {
@@ -38,15 +52,18 @@ async function voiceJoin() {
   } else {
     toast('Talking needs the secure https:// room link. You joined to listen; ask the host for the internet link to talk.', 6000);
   }
+  const ice = await voiceIce();
   if (!roomActive()) { mic?.getTracks().forEach((t) => t.stop()); return; }
-  Voice.mic = mic; Voice.on = true; Voice.muted = false;
+  Voice.ice = ice; Voice.retries.clear();
+  Voice.mic = mic; Voice.on = true; Voice.muted = false; Voice.talking = false;
+  voiceApplyMic();
   Voice.selfMeter = mic ? voiceMeter(mic) : null;
   voiceAnnounce();
   voiceOnMembers();
   clearInterval(Voice.loop);
   Voice.loop = setInterval(voiceTick, 100);
   renderVoice();
-  if (mic) toast('You\'re in voice. Headphones keep the music out of your mic.', 3500);
+  if (mic) toast(voicePtt() ? 'You\'re in voice. Hold T (or the mic button) to talk.' : 'You\'re in voice. Headphones keep the music out of your mic.', 3500);
 }
 function voiceLeave(silent) {
   if (!Voice.on) return;
@@ -60,15 +77,28 @@ function voiceLeave(silent) {
   renderVoice(); voicePaintMembers();
 }
 function voiceAnnounce() {
-  if (Voice.on) roomSend('voice', { on: true, mic: !!Voice.mic, muted: Voice.muted });
+  if (Voice.on) roomSend('voice', { on: true, mic: !!Voice.mic, muted: voicePtt() ? false : Voice.muted, ptt: voicePtt() });
 }
 function voiceToggleMute() {
   if (!Voice.on) { voiceJoin(); return; }
   if (!Voice.mic) { toast('You joined to listen only, so there is no mic to unmute.'); return; }
+  if (voicePtt()) { toast('Push to talk is on: hold T or hold the mic button to talk.', 2500); return; }
   Voice.muted = !Voice.muted;
-  Voice.mic.getAudioTracks().forEach((t) => { t.enabled = !Voice.muted; });
+  voiceApplyMic();
   voiceAnnounce();
   renderVoice();
+}
+// Push to talk: the mic only sends sound while you hold T or the mic button.
+function voiceTalk(on) {
+  if (!Voice.on || !Voice.mic || !voicePtt() || Voice.talking === on) return;
+  Voice.talking = on;
+  voiceApplyMic();
+  renderVoice();
+}
+function voiceSetPtt(on) {
+  store.set('voicePtt', on);
+  Voice.talking = false; Voice.muted = false;
+  voiceApplyMic(); voiceAnnounce(); renderVoice();
 }
 
 /* ---------- connections ---------- */
@@ -76,10 +106,10 @@ function voiceToggleMute() {
 // For each pair, the member with the smaller id starts the call, so two people never call each other at once.
 function voiceOnMembers() {
   if (!Voice.on) { voicePaintMembers(); return; }
-  const inVoice = new Map(Room.members.filter((m) => m.voice && m.online && m.id !== Room.client).map((m) => [m.id, m]));
+  const inVoice = new Map(Room.members.filter((m) => m.voice && m.online && m.id !== Room.me).map((m) => [m.id, m]));
   for (const id of [...Voice.peers.keys()]) if (!inVoice.has(id)) voiceClose(id);
   for (const id of inVoice.keys()) {
-    if (!Voice.peers.has(id) && Room.client < id) voiceCall(id);
+    if (!Voice.peers.has(id) && Room.me < id) voiceCall(id);
   }
   voicePaintMembers(); renderVoice();
 }
@@ -92,7 +122,7 @@ function voiceOnHello() {
 function voicePeer(id, initiator) {
   let p = Voice.peers.get(id);
   if (p) return p;
-  const pc = new RTCPeerConnection({ iceServers: VOICE_ICE });
+  const pc = new RTCPeerConnection({ iceServers: Voice.ice?.iceServers || VOICE_ICE });
   p = { pc, ice: [], audio: null, meter: null };
   Voice.peers.set(id, p);
   if (Voice.mic) for (const track of Voice.mic.getAudioTracks()) pc.addTrack(track, Voice.mic);
@@ -109,9 +139,19 @@ function voicePeer(id, initiator) {
     p.meter = voiceMeter(stream);
   };
   pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'connected') Voice.retries.delete(id);
     if (pc.connectionState === 'failed') {
       const name = Room.members.find((m) => m.id === id)?.name || 'someone';
-      toast(`Couldn't connect voice with ${name}. Their network may block direct connections.`, 5000);
+      const tries = Voice.retries.get(id) || 0;
+      if (tries < 2) {
+        // Networks hiccup: start the call again (the caller side redials, the other side answers).
+        Voice.retries.set(id, tries + 1);
+        if (Room.me < id) setTimeout(() => { if (Voice.peers.get(id)?.pc === pc) { voiceClose(id); voiceCall(id); } }, 1000 + tries * 2000);
+      } else {
+        toast(Voice.ice?.relay
+          ? `Couldn't connect voice with ${name}. Check their internet connection.`
+          : `Couldn't connect voice with ${name}. Their network blocks direct connections; a voice relay (TURN) fixes that, see the README.`, 6000);
+      }
     }
     renderVoice();
   };
@@ -182,7 +222,7 @@ function voiceTick() {
   if (!Voice.on) return;
   const now = performance.now(), was = [...Voice.speaking].join();
   Voice.speaking.clear();
-  if (Voice.selfMeter && !Voice.muted && voiceLevel(Voice.selfMeter, now)) Voice.speaking.add('self');
+  if (Voice.selfMeter && voiceLive() && voiceLevel(Voice.selfMeter, now)) Voice.speaking.add('self');
   let someoneElse = false;
   for (const [id, p] of Voice.peers) {
     if (p.meter && voiceLevel(p.meter, now)) { Voice.speaking.add(id); someoneElse = true; }
@@ -208,7 +248,7 @@ function voiceSetVolume(v) {
 function voicePaintMembers() {
   for (const el of $$('#roomMembers .member')) {
     const id = el.dataset.id;
-    const talking = Voice.on && Voice.speaking.has(id === Room.client ? 'self' : id);
+    const talking = Voice.on && Voice.speaking.has(id === Room.me ? 'self' : id);
     el.classList.toggle('speaking', talking);
   }
   const mine = $('#btnMic');
@@ -218,14 +258,14 @@ function renderVoice() {
   const box = $('#roomVoice'), mic = $('#btnMic');
   if (mic) {
     mic.hidden = !Voice.on;
-    mic.setAttribute('aria-pressed', String(Voice.on && !Voice.muted && !!Voice.mic));
-    mic.title = !Voice.mic ? 'Listening only' : Voice.muted ? 'Unmute your mic' : 'Mute your mic';
-    $('use', mic)?.setAttribute('href', Voice.mic && !Voice.muted ? '#i-mic' : '#i-mic-off');
+    mic.setAttribute('aria-pressed', String(Voice.on && voiceLive()));
+    mic.title = !Voice.mic ? 'Listening only' : voicePtt() ? 'Hold to talk (or hold T)' : Voice.muted ? 'Unmute your mic' : 'Mute your mic';
+    $('use', mic)?.setAttribute('href', voiceLive() ? '#i-mic' : '#i-mic-off');
   }
   if (!box) return;
   box.replaceChildren();
   if (!roomActive()) return;
-  const others = Room.members.filter((m) => m.voice && m.online && m.id !== Room.client);
+  const others = Room.members.filter((m) => m.voice && m.online && m.id !== Room.me);
   if (!Voice.on) {
     const join = h('button', { class: 'btn primary' }, icon('mic'), 'Join voice');
     join.addEventListener('click', voiceJoin);
@@ -244,15 +284,21 @@ function renderVoice() {
   const status = !others.length ? 'Waiting for others to join voice'
     : connected === others.length ? `Talking with ${connected} ${connected === 1 ? 'person' : 'people'}`
       : `Connecting… ${connected}/${others.length}`;
-  const muteBtn = h('button', { class: 'btn' + (Voice.mic && !Voice.muted ? ' primary' : '') },
-    icon(Voice.mic && !Voice.muted ? 'mic' : 'mic-off'), !Voice.mic ? 'Listening only' : Voice.muted ? 'Unmute' : 'Mute');
+  const ptt = voicePtt();
+  const muteBtn = h('button', { class: 'btn' + (voiceLive() ? ' primary' : '') + (ptt ? ' ptt-btn' : '') },
+    icon(voiceLive() ? 'mic' : 'mic-off'),
+    !Voice.mic ? 'Listening only' : ptt ? (Voice.talking ? 'Talking…' : 'Hold to talk') : Voice.muted ? 'Unmute' : 'Mute');
   muteBtn.disabled = !Voice.mic;
-  muteBtn.addEventListener('click', voiceToggleMute);
+  if (ptt) voiceHoldable(muteBtn); else muteBtn.addEventListener('click', voiceToggleMute);
   const leave = h('button', { class: 'btn', text: 'Leave voice' });
   leave.addEventListener('click', () => voiceLeave());
   const vol = h('input', { type: 'range', class: 'range', min: '0', max: '100', value: String(voiceVol()), 'aria-label': 'Voice volume' });
   vol.style.setProperty('--p', `${voiceVol()}%`);
   vol.addEventListener('input', () => { vol.style.setProperty('--p', `${vol.value}%`); voiceSetVolume(+vol.value); });
+  const pttBox = h('input', { type: 'checkbox' });
+  pttBox.checked = ptt;
+  pttBox.disabled = !Voice.mic;
+  pttBox.addEventListener('change', () => voiceSetPtt(pttBox.checked));
   const duck = h('input', { type: 'checkbox' });
   duck.checked = voiceDucks();
   duck.addEventListener('change', () => store.set('voiceDuck', duck.checked));
@@ -262,5 +308,34 @@ function renderVoice() {
       h('span', { class: 'live-dot' })),
     h('div', { class: 'btn-row' }, muteBtn, leave),
     h('label', { class: 'voice-vol' }, icon('group'), h('span', { text: 'Voices' }), vol),
-    h('label', { class: 'switch' }, duck, h('span', { text: 'Turn the music down while people talk' })));
+    h('label', { class: 'switch' }, pttBox, h('span', { text: 'Push to talk (hold T or the mic button)' })),
+    h('label', { class: 'switch' }, duck, h('span', { text: 'Turn the music down while people talk' })),
+    Voice.ice?.relay ? h('p', { class: 'hint', text: 'Voice relay is on, so voice works even on strict networks.' }) : null);
+}
+// Hold-to-talk on a button (mouse, touch or keyboard).
+function voiceHoldable(btn) {
+  const down = (e) => { e.preventDefault(); btn.setPointerCapture?.(e.pointerId); voiceTalk(true); };
+  const up = () => voiceTalk(false);
+  btn.addEventListener('pointerdown', down);
+  btn.addEventListener('pointerup', up);
+  btn.addEventListener('pointercancel', up);
+  btn.addEventListener('lostpointercapture', up);
+  btn.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); voiceTalk(true); } });
+  btn.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') voiceTalk(false); });
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+function voiceBoot() {
+  const mic = $('#btnMic');
+  // The top-bar mic: click to mute, or hold to talk when push to talk is on.
+  mic.addEventListener('click', () => { if (!voicePtt()) voiceToggleMute(); });
+  mic.addEventListener('pointerdown', (e) => { if (voicePtt() && Voice.on) { e.preventDefault(); mic.setPointerCapture?.(e.pointerId); voiceTalk(true); } });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) mic.addEventListener(ev, () => voiceTalk(false));
+  // Hold T anywhere (except while typing) to talk.
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() !== 't' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (Voice.on && voicePtt()) { e.preventDefault(); voiceTalk(true); }
+  });
+  document.addEventListener('keyup', (e) => { if (e.key.toLowerCase() === 't') voiceTalk(false); });
+  window.addEventListener('blur', () => voiceTalk(false));
 }
