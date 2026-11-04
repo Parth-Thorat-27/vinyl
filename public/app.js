@@ -251,7 +251,8 @@ async function setArt(t) {
 
 /* ---------- YouTube players ---------- */
 const PS = { UNSTARTED: -1, ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 };
-let player, helper, ytReady = false, helperReady = false, pendingAutoplay = null;
+// `player` is whichever YouTube player is sounding right now; `spare` waits to crossfade in the next song.
+let player, spare, helper, ytReady = false, spareReady = false, helperReady = false, pendingAutoplay = null;
 let phase = 'idle'; // idle | loading | playing | paused
 let errStreak = 0, loadingTimer;
 
@@ -260,6 +261,10 @@ window.onYouTubeIframeAPIReady = () => {
   player = new YT.Player('ytPlayer', {
     width: '100%', height: '100%', playerVars: vars,
     events: { onReady: onPlayerReady, onStateChange: onPlayerState, onError: onPlayerError },
+  });
+  spare = new YT.Player('ytPlayer2', {
+    width: '100%', height: '100%', playerVars: vars,
+    events: { onReady: (e) => { spareReady = true; e.target.setVolume(0); }, onStateChange: onPlayerState, onError: onPlayerError },
   });
   helper = new YT.Player('ytHelper', {
     width: 200, height: 200, playerVars: { ...vars, mute: 1 },
@@ -289,19 +294,61 @@ const YTE = {
   name: 'yt',
   ready: () => ytReady,
   load(t, autoplay, start = 0) {
+    endCrossfade();
     const o = { videoId: t.id, startSeconds: Math.floor(start) };
     autoplay ? player.loadVideoById(o) : player.cueVideoById(o);
   },
   play() { player.playVideo(); },
-  pause() { player.pauseVideo(); },
-  stop() { if (ytReady) player.stopVideo(); },
-  seek(s) { player.seekTo(s, true); },
+  pause() { endCrossfade(); player.pauseVideo(); },
+  stop() { endCrossfade(); if (ytReady) player.stopVideo(); },
+  seek(s) { endCrossfade(); player.seekTo(s, true); },
   time: () => player?.getCurrentTime?.() || 0,
   duration: () => player?.getDuration?.() || 0,
-  volume(v) { if (ytReady) player.setVolume(v); },
-  mute(m) { if (ytReady) (m ? player.mute() : player.unMute()); },
+  volume(v) { if (ytReady && !XF.active) player.setVolume(v); },
+  mute(m) { for (const p of [player, spare]) if (p?.mute) (m ? p.mute() : p.unMute()); },
   isLoaded: (t) => player?.getVideoData?.()?.video_id === t.id && player.getPlayerState() !== PS.ENDED,
 };
+
+/* ---------- crossfade: the next song fades in while this one fades out ---------- */
+const XF = { active: false, old: null, t0: 0, dur: 0, timer: null };
+const crossfadeSecs = () => store.get('crossfade', 0);
+function maybeCrossfade(c, d) {
+  const secs = crossfadeSecs();
+  if (!secs || XF.active || !spareReady || phase !== 'playing' || !isCurrent(YTE) || roomIsGuest()) return;
+  if (S.repeat === 'one' || sleepStopsAfterSong()) return;
+  const nextIdx = S.index < S.queue.length - 1 ? S.index + 1 : (S.repeat === 'all' && S.queue.length > 1 ? 0 : -1);
+  const n = S.queue[nextIdx];
+  if (!n || n.src === 'sp' || !d || d < secs * 3 || d - c > secs) return;
+  startCrossfade(nextIdx, secs);
+}
+function startCrossfade(i, secs) {
+  const old = player, fresh = spare, t = S.queue[i];
+  XF.active = true; XF.old = old; XF.t0 = performance.now(); XF.dur = secs * 1000;
+  fresh.setVolume(0);
+  if (S.muted) fresh.mute(); else fresh.unMute();
+  fresh.loadVideoById({ videoId: t.id, startSeconds: 0 });
+  // From here on the new song is "the" song: the old one only fades out in the background.
+  player = fresh; spare = old;
+  S.index = i; S.pos = 0; store.set('pos', 0);
+  if (t.src !== 'sp') needMeta(t.id);
+  updateNowPlaying(); renderQueue(); persist(); roomNotify();
+  historyRecord(t);
+  clearInterval(XF.timer);
+  XF.timer = setInterval(() => {
+    const k = Math.min(1, (performance.now() - XF.t0) / XF.dur);
+    const v = musicVolume();
+    try { old.setVolume(Math.round(v * (1 - k))); player.setVolume(Math.round(v * k)); } catch { /* player gone */ }
+    if (k >= 1) endCrossfade();
+  }, 100);
+}
+function endCrossfade() {
+  if (!XF.active) return;
+  clearInterval(XF.timer);
+  XF.active = false;
+  try { XF.old.stopVideo(); XF.old.setVolume(0); } catch { /* ignore */ }
+  try { player.setVolume(musicVolume()); } catch { /* ignore */ }
+  XF.old = null;
+}
 const eng = (t = S.queue[S.index]) => (t?.src === 'sp' ? SPE : YTE);
 const isCurrent = (E) => eng() === E;
 
@@ -318,6 +365,7 @@ function onPlayerReady() {
   else player.cueVideoById({ videoId: t.id, startSeconds: Math.floor(S.pos || 0) });
 }
 function onPlayerState(e) {
+  if (e.target !== player) return; // the spare player (fading out, or waiting) doesn't drive anything
   if (!isCurrent(YTE)) return; // a Spotify track is playing; ignore the stopped YouTube player
   switch (e.data) {
     case PS.PLAYING: errStreak = 0; setPhase('playing'); pullVideoData(); break;
@@ -329,7 +377,7 @@ function onPlayerState(e) {
   }
 }
 function onPlayerError(e) {
-  if (!isCurrent(YTE)) return;
+  if (e.target !== player || !isCurrent(YTE)) return;
   const t = S.queue[S.index];
   const name = t ? `"${trackTitle(t)}"` : 'This track';
   const why = e.data === 101 || e.data === 150 ? "can't be played outside YouTube"
@@ -364,6 +412,7 @@ function setPhase(p) {
   if (was !== p) roomNotify();
   // A listener's song just started: line it up with the host straight away.
   if (p === 'playing' && was !== 'playing' && roomIsGuest()) setTimeout(roomCorrectDrift, 800);
+  if (p === 'playing') historyRecord(S.queue[S.index]);
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = p === 'playing' ? 'playing' : p === 'paused' ? 'paused' : 'none';
 }
 
@@ -391,6 +440,7 @@ function engineError(err) {
 }
 function onEnded() {
   if (roomIsGuest()) { setPhase('idle'); return; } // the host decides what plays next
+  if (sleepConsumeEndOfSong()) { setPhase('idle'); return; } // sleep timer: "stop after this song"
   if (S.repeat === 'one') {
     if (isCurrent(YTE)) { player.seekTo(0, true); player.playVideo(); } else playIndex(S.index);
     return;
@@ -483,6 +533,17 @@ function removeAt(i) {
   }
   renderQueue(); updateUpNext(); persist();
 }
+function moveTrack(from, to) {
+  if (roomIntercept('move', { i: from, to })) return;
+  to = Math.max(0, Math.min(S.queue.length - 1, to));
+  if (from === to || !S.queue[from]) return;
+  const [t] = S.queue.splice(from, 1);
+  S.queue.splice(to, 0, t);
+  if (S.index === from) S.index = to;
+  else if (from < S.index && to >= S.index) S.index--;
+  else if (from > S.index && to <= S.index) S.index++;
+  renderQueue(); updateUpNext(); persist();
+}
 function clearQueue() {
   if (roomIsGuest()) { toast('Only the host can clear the room queue.'); return; }
   if (S.queue[S.index]) eng().stop();
@@ -513,10 +574,14 @@ function cycleRepeat() {
   toast({ off: 'Repeat off', all: 'Repeat queue', one: 'Repeat this song' }[S.repeat], 1400);
 }
 // Voice chat can dip the music (voice.js) without touching the volume you chose.
-let musicDuck = 1;
-const musicVolume = () => Math.round(S.volume * musicDuck);
+let musicDuck = 1, sleepFade = 1;
+const musicVolume = () => Math.round(S.volume * musicDuck * sleepFade);
 function setMusicDuck(f) {
   musicDuck = f;
+  if (!S.muted) { YTE.volume(musicVolume()); SPE.volume(musicVolume()); }
+}
+function setSleepFade(f) {
+  sleepFade = f;
   if (!S.muted) { YTE.volume(musicVolume()); SPE.volume(musicVolume()); }
 }
 function setVolume(v) {
@@ -550,6 +615,7 @@ function updateNowPlaying() {
   }
   $('#title').textContent = trackTitle(t);
   $('#artist').textContent = trackArtist(t);
+  lyricsOnTrack(t);
   document.title = `${trackTitle(t)} · Vinyl`;
   if (shownArt !== (t.src || 'yt') + t.id) setArt(t);
   updateUpNext();
@@ -580,11 +646,14 @@ function setRange(el, v, max) {
 let seeking = false, lastPosSave = 0, lastPosState = 0;
 setInterval(() => {
   deckSync();
+  sleepTick();
   const E = eng();
   if (S.index < 0 || !E.ready()) return;
   const d = E.duration() || 0, c = Math.min(E.time() || 0, d || Infinity);
   if (!seeking) { setRange($('#seek'), d ? (c / d) * 1000 : 0, 1000); $('#tCur').textContent = fmt(c); }
   $('#tDur').textContent = fmt(d);
+  maybeCrossfade(c, d);
+  lyricsTick(c);
   if (phase === 'playing') {
     const now = Date.now();
     if (now - lastPosSave > 4000 && !roomIsGuest()) { lastPosSave = now; S.pos = c; store.set('pos', c); }
@@ -635,15 +704,66 @@ function renderQueue() {
   renderCrate();
   if (!S.queue.length) { list.append(empty('Your queue is empty', 'Paste a YouTube Music or Spotify link in Library to fill it.')); return; }
   const frag = document.createDocumentFragment();
+  const canMove = !roomIsGuest() || Room.settings.allowControl;
   S.queue.forEach((t, i) => {
-    frag.append(trackRow(t, {
+    const row = trackRow(t, {
       current: i === S.index,
       onClick: () => (i === S.index ? togglePlay() : roomIntercept('index', { i }) || playIndex(i)),
       actions: [iconBtn('close', 'Remove from queue', () => removeAt(i))],
-    }));
+    });
+    row.dataset.i = i;
+    if (canMove && S.queue.length > 1) row.prepend(dragHandle(i));
+    frag.append(row);
   });
+  list.classList.toggle('reorderable', canMove && S.queue.length > 1);
   list.append(frag);
   roomNotify();
+}
+// Drag the handle (mouse or finger) to move a song; or focus it and press the arrow keys.
+function dragHandle(i) {
+  const handle = h('button', { class: 'drag-handle', title: 'Drag to reorder (or use the arrow keys)', 'aria-label': `Move ${trackTitle(S.queue[i])}` }, icon('drag'));
+  handle.addEventListener('click', (e) => e.stopPropagation());
+  handle.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault(); e.stopPropagation();
+    const to = i + (e.key === 'ArrowUp' ? -1 : 1);
+    if (to < 0 || to >= S.queue.length) return;
+    moveTrack(i, to);
+    $(`#queueList .row[data-i="${to}"] .drag-handle`)?.focus();
+  });
+  handle.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const list = $('#queueList'), row = handle.closest('.row');
+    const rows = $$('.row', list), start = e.clientY;
+    let target = i;
+    handle.setPointerCapture(e.pointerId);
+    row.classList.add('dragging');
+    const move = (ev) => {
+      row.style.transform = `translateY(${ev.clientY - start}px)`;
+      target = i;
+      for (const r of rows) {
+        if (r === row) continue;
+        const b = r.getBoundingClientRect(), mid = b.top + b.height / 2, ri = +r.dataset.i;
+        if (ri > i && ev.clientY > mid) target = Math.max(target, ri);
+        if (ri < i && ev.clientY < mid) target = Math.min(target, ri);
+      }
+      for (const r of rows) r.classList.toggle('drop-here', r !== row && +r.dataset.i === target);
+      // Scroll the list when dragging near its edges.
+      const box = list.closest('.tab-body').getBoundingClientRect();
+      if (ev.clientY < box.top + 40) list.closest('.tab-body').scrollBy(0, -12);
+      else if (ev.clientY > box.bottom - 40) list.closest('.tab-body').scrollBy(0, 12);
+    };
+    const up = () => {
+      handle.removeEventListener('pointermove', move);
+      row.classList.remove('dragging'); row.style.transform = '';
+      for (const r of rows) r.classList.remove('drop-here');
+      if (target !== i) moveTrack(i, target);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up, { once: true });
+    handle.addEventListener('pointercancel', up, { once: true });
+  });
+  return handle;
 }
 function scrollQueueToCurrent() {
   const cur = $('#queueList .row.current');
@@ -990,6 +1110,7 @@ function selectTab(name) {
   for (const b of $$('.tab-body')) b.hidden = b.dataset.tab !== name;
   if (name === 'search') { renderSearch(); if (searchSrc() === 'sp' ? SP.tokens : G.token) setTimeout(() => $('#searchInput').focus(), 50); }
   if (name === 'queue') requestAnimationFrame(scrollQueueToCurrent);
+  if (name === 'lyrics') lyricsShow();
   store.set('tab', name);
 }
 function openPanel(tab) {
@@ -1139,7 +1260,7 @@ function bind() {
       ArrowLeft: () => (e.shiftKey ? prev() : seekBy(-5)),
       ArrowUp: () => setVolume(S.volume + 5),
       ArrowDown: () => setVolume(S.volume - 5),
-      n: () => next(), p: prev, s: toggleShuffle, r: cycleRepeat, m: () => toggleMute(),
+      n: () => next(), p: prev, s: toggleShuffle, r: cycleRepeat, m: () => toggleMute(), l: () => openPanel('lyrics'),
       Escape: closePanel,
     };
     if (map[k]) { e.preventDefault(); map[k](); }
@@ -1168,6 +1289,7 @@ setRange($('#vol'), S.volume, 100);
 renderQueue(); renderSaved(); renderAccount();
 spBoot();
 roomBoot();
+extrasBoot();
 selectTab(((t) => (t === 'room' ? 'queue' : t))(store.get('tab', S.queue.length ? 'queue' : 'library')));
 updateNowPlaying();
 deckBoot();
