@@ -3,3 +3,5 @@ node_modules/
 Thumbs.db
 *.log
 .env
+.certs/
+vinyl.config.json

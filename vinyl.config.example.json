@@ -1,0 +1,21 @@
+{
+  "_readme": "Copy this file to vinyl.config.json (it stays private: it's in .gitignore) and fill in what you need. Environment variables with the same meaning win over this file.",
+
+  "port": 7733,
+  "https": true,
+  "httpsPort": 7734,
+
+  "_voiceRelay": "Optional. Lets voice chat work on strict networks (offices, colleges, some mobile data). Fill in ONE of the three options below.",
+
+  "meteredApp": "",
+  "meteredApiKey": "",
+
+  "cloudflareTurnKeyId": "",
+  "cloudflareTurnApiToken": "",
+
+  "turn": {
+    "urls": [],
+    "username": "",
+    "credential": ""
+  }
+}
