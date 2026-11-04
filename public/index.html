@@ -16,7 +16,10 @@
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Doto:ROND,wght@0..100,600..900&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..700,0..100;1,9..144,400..700,0..100&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Fonts load without holding up the app: on a slow connection the player works straight away
+       and the typefaces swap in when they arrive. -->
+  <link href="https://fonts.googleapis.com/css2?family=Doto:ROND,wght@0..100,600..900&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..700,0..100;1,9..144,400..700,0..100&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Doto:ROND,wght@0..100,600..900&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..700,0..100;1,9..144,400..700,0..100&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-phase="idle">
@@ -47,6 +50,12 @@
     <symbol id="i-devices" viewBox="0 0 24 24"><path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/></symbol>
     <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></symbol>
     <symbol id="i-mic-off" viewBox="0 0 24 24"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5a3 3 0 0 0-6 0v.18l5.98 5.99zM4.27 3 3 4.27l6.01 6.01V11a3 3 0 0 0 3 3c.22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></symbol>
+    <symbol id="i-drag" viewBox="0 0 24 24"><path d="M9 4.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0 7.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm-1.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18 4.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zM16.5 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18 19.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M5 16 3 6l5.5 4L12 4l3.5 6L21 6l-2 10H5zm0 2h14v2H5v-2z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M18 8h-1V6A5 5 0 0 0 7 6v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-6 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0v2z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12.34 2.02A10 10 0 1 0 22 12.66 7.5 7.5 0 0 1 12.34 2.02z"/></symbol>
+    <symbol id="i-lyrics" viewBox="0 0 24 24"><path d="M4 5h16v2H4V5zm0 4h10v2H4V9zm0 4h7v2H4v-2zm0 4h7v2H4v-2zm14.5-6.5V16a2.5 2.5 0 1 1-1.5-2.29V9h4v1.5h-2.5z"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></symbol>
     <symbol id="i-group" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></symbol>
     <symbol id="i-phone" viewBox="0 0 24 24"><path d="M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 20h-4v-1h4v1zm3.25-3H6.75V4h10.5v14z"/></symbol>
@@ -113,6 +122,7 @@
         <button class="room-pill" id="roomPill" hidden title="Open the room"><span class="live-dot"></span><span id="roomPillText">Live</span></button>
         <button class="icon-btn sheet-only" data-open="library" title="Library"><svg class="i"><use href="#i-library"/></svg></button>
         <button class="icon-btn" id="btnListen" title="Let the glow hear the music" aria-pressed="false" hidden><svg class="i"><use href="#i-wave"/></svg></button>
+        <button class="sleep-pill" id="sleepPill" hidden title="Sleep timer"><svg class="i"><use href="#i-moon"/></svg><span id="sleepPillText"></span></button>
         <button class="icon-btn mic-btn" id="btnMic" hidden title="Mute your mic" aria-pressed="true"><svg class="i"><use href="#i-mic"/></svg></button>
         <button class="icon-btn" id="btnRoom" title="Listen together"><svg class="i"><use href="#i-group"/></svg></button>
         <button class="icon-btn" id="btnSettings" title="Settings"><svg class="i"><use href="#i-settings"/></svg></button>
@@ -244,6 +254,7 @@
         <button class="tab" role="tab" data-tab="queue"><svg class="i"><use href="#i-queue"/></svg>Queue</button>
         <button class="tab" role="tab" data-tab="library"><svg class="i"><use href="#i-library"/></svg>Library</button>
         <button class="tab" role="tab" data-tab="search"><svg class="i"><use href="#i-search"/></svg>Search</button>
+        <button class="tab" role="tab" data-tab="lyrics"><svg class="i"><use href="#i-lyrics"/></svg>Lyrics</button>
         <button class="tab" role="tab" data-tab="room" id="tabRoom" hidden><svg class="i"><use href="#i-group"/></svg>Room</button>
       </nav>
 
@@ -275,6 +286,9 @@
         <div class="section-head"><h2>Spotify</h2></div>
         <div id="spotifyBox" class="account"></div>
 
+        <div class="section-head"><h2>Recently played</h2><button class="text-btn" id="btnClearHistory" hidden>Clear</button></div>
+        <div id="historyList" class="list"></div>
+
         <div class="section-head"><h2>Saved</h2></div>
         <div id="savedList" class="list"></div>
       </section>
@@ -289,6 +303,10 @@
           <input id="searchInput" type="search" placeholder="Search songs, artists…" enterkeyhint="search">
         </form>
         <div id="searchResults" class="list"></div>
+      </section>
+
+      <section class="tab-body" data-tab="lyrics" hidden>
+        <div id="lyricsBox" class="lyrics-box" aria-live="off"></div>
       </section>
 
       <section class="tab-body room-body" data-tab="room" hidden>
@@ -309,6 +327,7 @@
   <!-- YouTube players, both out of sight: the turntable is the only picture. The first one plays
        the sound; the helper only reads playlist contents. -->
   <div id="videoDock" class="video-dock" aria-hidden="true"><div id="ytPlayer"></div></div>
+  <div class="video-dock xf-dock" aria-hidden="true"><div id="ytPlayer2"></div></div>
   <div class="helper-dock" aria-hidden="true"><div id="ytHelper"></div></div>
 
   <dialog id="settings" class="dialog">
@@ -362,9 +381,26 @@
         <p class="hint" id="spHint"></p>
       </section>
 
+      <section class="set-section" id="setPlayback">
+        <h3><svg class="i"><use href="#i-moon"/></svg>Playback</h3>
+        <label class="select-row"><span>Crossfade between songs</span>
+          <select id="crossfadeSelect">
+            <option value="0">Off</option><option value="3">3 seconds</option><option value="6">6 seconds</option>
+            <option value="9">9 seconds</option><option value="12">12 seconds</option>
+          </select>
+        </label>
+        <p class="hint">Blends one YouTube song into the next. (Spotify songs have their own crossfade setting in the Spotify app.)</p>
+        <div class="select-row"><span>Sleep timer</span></div>
+        <div class="seg sleep-seg" id="sleepOptions">
+          <button data-sleep="15">15 min</button><button data-sleep="30">30 min</button><button data-sleep="45">45 min</button>
+          <button data-sleep="60">1 hour</button><button data-sleep="song">End of song</button><button data-sleep="0">Off</button>
+        </div>
+        <p class="hint">The music fades out gently and pauses.</p>
+      </section>
+
       <section class="set-section">
         <h3>Keyboard</h3>
-        <p class="hint"><kbd>Space</kbd> play/pause · <kbd>←</kbd><kbd>→</kbd> seek · <kbd>N</kbd>/<kbd>P</kbd> next/prev · <kbd>↑</kbd><kbd>↓</kbd> volume · <kbd>S</kbd> shuffle · <kbd>R</kbd> repeat · <kbd>M</kbd> mute</p>
+        <p class="hint"><kbd>Space</kbd> play/pause · <kbd>←</kbd><kbd>→</kbd> seek · <kbd>N</kbd>/<kbd>P</kbd> next/prev · <kbd>↑</kbd><kbd>↓</kbd> volume · <kbd>S</kbd> shuffle · <kbd>R</kbd> repeat · <kbd>M</kbd> mute · <kbd>L</kbd> lyrics · hold <kbd>T</kbd> push to talk</p>
       </section>
 
       <section class="set-section">
@@ -406,6 +442,7 @@
   <script src="spotify.js"></script>
   <script src="room.js"></script>
   <script src="voice.js"></script>
+  <script src="extras.js"></script>
   <script src="deck.js"></script>
   <script src="crate.js"></script>
   <script src="glow.js"></script>

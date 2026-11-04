@@ -746,3 +746,82 @@ kbd { font-family: inherit; font-size: 11.5px; padding: 1px 6px; border-radius: 
   .eq i { animation: none !important; }
   .sheen, .sleeve, .crate-preview, .cp-media .mini-record { transition: none; }
 }
+
+/* ---------- Queue: drag to reorder ---------- */
+.list.reorderable .row { grid-template-columns: 22px 46px minmax(0, 1fr) auto; gap: 10px; }
+.drag-handle {
+  width: 22px; height: 40px; display: grid; place-items: center; border-radius: 6px;
+  color: var(--text-3); cursor: grab; touch-action: none;
+}
+.drag-handle .i { width: 18px; height: 18px; }
+.drag-handle:hover, .drag-handle:focus-visible { color: var(--text); background: var(--surface-2); }
+.row.dragging { position: relative; z-index: 5; background: var(--surface-2); box-shadow: 0 10px 24px rgb(0 0 0 / .45); cursor: grabbing; transition: none; }
+.row.dragging .drag-handle { cursor: grabbing; }
+.row.drop-here { box-shadow: inset 0 2px 0 var(--accent); }
+.more-btn { align-self: center; margin-top: 4px; }
+
+/* ---------- Lyrics ---------- */
+.lyrics-box { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+.lyrics-head { display: flex; flex-direction: column; padding: 0 4px; }
+.lyrics-head b { font-size: 16px; }
+.lyrics-head span { font-size: 13px; color: var(--text-2); }
+.lyrics { display: flex; flex-direction: column; gap: 2px; padding: 8px 0 40vh; }
+.lyrics.plain { white-space: pre-line; font-size: 16px; line-height: 1.7; color: var(--text-2); padding: 4px; }
+.lyric {
+  text-align: left; padding: 6px 8px; border-radius: 10px; font-size: 19px; font-weight: 600; line-height: 1.35;
+  color: var(--text-3); transition: color .25s, transform .25s, background .15s;
+}
+.lyric:hover { background: var(--surface-2); }
+.lyric.past { color: rgb(255 240 220 / .5); }
+.lyric.on { color: var(--accent); transform: scale(1.02); transform-origin: left center; }
+.lyric.gap { font-size: 15px; }
+.lyrics-credit { text-align: center; }
+
+/* ---------- Room extras ---------- */
+.react-bar { display: flex; flex-wrap: wrap; gap: 4px; }
+.react-btn { width: 36px; height: 36px; border-radius: 10px; font-size: 19px; line-height: 1; background: var(--surface); border: 1px solid var(--line); transition: transform .12s, background .15s; }
+.react-btn:hover { background: var(--surface-2); transform: translateY(-1px); }
+.react-btn:active { transform: scale(.9); }
+.react-float {
+  position: fixed; z-index: 70; pointer-events: none; display: flex; flex-direction: column; align-items: center;
+  transform: translate(-50%, 0); animation: floatUp 2.5s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+.react-emoji { font-size: 40px; filter: drop-shadow(0 4px 8px rgb(0 0 0 / .4)); }
+.react-name { font-size: 11px; font-weight: 600; color: var(--text); background: rgb(0 0 0 / .45); padding: 1px 7px; border-radius: 8px; margin-top: 2px; }
+@keyframes floatUp {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(.6); }
+  12% { opacity: 1; transform: translate(-50%, -10px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -220px) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .react-float { animation-duration: 1.2s; } }
+.votes { display: flex; align-items: center; gap: 10px; min-height: 0; }
+.votes:empty { display: none; }
+.room-settings { border-top: 1px solid var(--line); padding-top: 8px; }
+.room-settings summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-2); padding: 4px 0; list-style-position: inside; }
+.room-settings[open] summary { margin-bottom: 6px; }
+.select-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; margin: 4px 0; }
+.select-row select, .room-settings select {
+  height: 32px; padding: 0 8px; border-radius: 8px; font: inherit; font-size: 13px;
+  color: var(--text); background: var(--lcd, #1a130d); border: 1px solid var(--line);
+}
+.pin-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-top: 6px; flex-wrap: wrap; }
+.pin-row .field { margin: 0; height: 36px; width: 110px; }
+.pin-row .btn { height: 36px; }
+.ptt-btn { touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* ---------- Sleep timer ---------- */
+.sleep-pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 10px; margin-right: 2px;
+  background: var(--surface-2); color: var(--text-2); font-size: 11.5px; font-weight: 600; white-space: nowrap; flex: none;
+}
+.sleep-pill .i { width: 16px; height: 16px; color: #c9b6ff; }
+.sleep-seg { flex-wrap: wrap; }
+.sleep-seg button { flex: 1 1 30%; }
+.xf-dock { right: 210px; }
+
+/* In a room the panel has five tabs and the top bar fills up: keep both on one line. */
+.tabs { overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+body.in-room .tabs .tab .i { display: none; }
+body.in-room .tabs .tab { padding-left: 8px; padding-right: 8px; flex: 1 0 auto; }
+@media (min-width: 960px) { body.in-room .brand { display: none; } }
