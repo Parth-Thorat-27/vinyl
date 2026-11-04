@@ -55,7 +55,10 @@ function renderCrate() {
 
 // A title arrived for a pasted song: print it on its spine.
 function crateMeta(id) {
-  for (const el of $$(`.sleeve[data-vid="${id}"] .sleeve-title`)) el.textContent = meta[id].t;
+  for (const el of $$(`.sleeve[data-vid="${id}"] .sleeve-title`)) {
+    const t = crateTracks()[+el.closest('.sleeve').dataset.i];
+    if (!t?.title) el.textContent = meta[id].t;
+  }
   if (Crate.shown?.dataset.vid === id) crateShow(Crate.shown);
 }
 
