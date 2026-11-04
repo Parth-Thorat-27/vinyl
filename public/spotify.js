@@ -247,7 +247,7 @@ function spInitSDK() {
       const p = new Spotify.Player({
         name: 'Vinyl',
         getOAuthToken: (cb) => { spToken().then(cb).catch(() => {}); },
-        volume: (S.muted ? 0 : S.volume) / 100,
+        volume: (S.muted ? 0 : musicVolume()) / 100,
       });
       p.addListener('ready', ({ device_id: id }) => { SP.sdk = p; SP.sdkDevice = id; done(id); renderSpotifyDevices(); });
       p.addListener('not_ready', () => { SP.sdkDevice = null; });
@@ -336,7 +336,7 @@ const SPE = {
     if (!uris.length) uris.push('spotify:track:' + t.id);
     await spApi(`/me/player/play?device_id=${dev}`, { method: 'PUT', body: { uris, position_ms: Math.round(start * 1000) } });
     SP.activeDevice = dev; SP.loadedAt = performance.now();
-    if (dev !== SP.sdkDevice) SPE.volume(S.muted ? 0 : S.volume);
+    if (dev !== SP.sdkDevice) SPE.volume(S.muted ? 0 : musicVolume());
     spPrepare(dev);
     spSyncPolling();
   },
@@ -383,7 +383,7 @@ const SPE = {
       }, 400);
     }
   },
-  mute(m) { SPE.volume(m ? 0 : S.volume); },
+  mute(m) { SPE.volume(m ? 0 : musicVolume()); },
   isLoaded: (t) => !!SP.st && SP.st.id === t.id,
 };
 

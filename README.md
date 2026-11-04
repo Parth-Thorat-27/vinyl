@@ -66,7 +66,8 @@ Tap the **people icon** at the top, enter your name, and **Start a room**. Then 
   - The **×** next to a name removes someone.
   - **End room** closes it for everyone.
 - **You're the DJ:** listeners follow your play, pause, skip and seek. Their own play/pause only affects their own device; pressing play again re-syncs them.
-- **Let listeners control playback and add songs:** turn this on so everyone can skip, and add songs from links, search or their playlists.
+- **Song requests (on by default):** listeners add songs from links, Search or their playlists, and the songs join the **end of the queue**. Everyone sees "added by Riya" on them, and a note appears in the chat. The host can switch requests off.
+- **Listeners can also skip, pause and seek:** off by default; the host can turn it on to share the controls.
 - **Chat:** the Room tab has a chat for everyone in the room.
 - **A listener's own queue** is set aside while they're in a room and restored when they leave.
 
@@ -74,6 +75,15 @@ Tap the **people icon** at the top, enter your name, and **Start a room**. Then 
 - **Same Wi-Fi:** works straight away.
 - **Friends anywhere:** install Cloudflare's free `cloudflared` once with `winget install --id Cloudflare.cloudflared` and restart Vinyl. Then **Invite → Share over the internet** opens a temporary secure `https://…trycloudflare.com` link, no account needed. It closes when you turn it off or close Vinyl.
 - **Your PC is the hub:** rooms run on your PC's Vinyl server and need nobody else's service, so keep Vinyl running while the room is open.
+
+**Voice chat:** in the Room tab, tap **Join voice** to talk with everyone while the music keeps playing.
+- The music dips while someone talks, and a green ring shows who's speaking.
+- Mute with the mic button at the top.
+- Voices go directly between devices; Vinyl's server only helps them connect.
+- **Headphones work best**, so the music from your speakers doesn't get picked up by your mic.
+- Browsers only allow the microphone on secure pages, so anyone joining with the plain Wi-Fi link (`http://…sslip.io`) can *hear* voice chat but not talk. Send the `https://` link from **Invite → Share over the internet** so everyone can talk, even people on your Wi-Fi.
+- It suits a small group of friends; everyone connects to everyone, so very big rooms get heavy.
+- A few strict networks (some offices and mobile carriers) block direct connections, and Vinyl will say so if voice can't connect to someone.
 
 **Spotify songs in a room:** each listener needs their own Spotify Premium connected to hear them. YouTube Music songs work for everyone.
 

@@ -1,6 +1,6 @@
 // Caches the app shell so Vinyl opens instantly (music itself always streams from YouTube).
-const CACHE = 'vinyl-v10';
-const SHELL = ['./', 'index.html', 'style.css', 'spotify.js', 'room.js', 'deck.js', 'crate.js', 'glow.js', 'app.js', 'manifest.webmanifest',
+const CACHE = 'vinyl-v11';
+const SHELL = ['./', 'index.html', 'style.css', 'spotify.js', 'room.js', 'voice.js', 'deck.js', 'crate.js', 'glow.js', 'app.js', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

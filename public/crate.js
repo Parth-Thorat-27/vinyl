@@ -70,7 +70,7 @@ function crateShow(el) {
   if (art) img.src = art; else img.removeAttribute('src');
   $('.mini-label', p).style.backgroundImage = art ? `url("${art}")` : '';
   $('.cp-title', p).textContent = trackTitle(t);
-  $('.cp-artist', p).textContent = trackArtist(t);
+  $('.cp-artist', p).textContent = artistLine(t);
   $('.cp-hint', p).hidden = !on; // clicking to put it on goes without saying; only say it's already there
   p.classList.toggle('on-deck', on);
 

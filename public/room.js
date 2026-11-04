@@ -37,7 +37,7 @@ async function roomApi(path, body) {
 function roomSend(type, data) {
   if (!Room.id) return Promise.resolve();
   return roomApi(`/${Room.id}/send`, { client: Room.client, host: Room.hostToken || undefined, type, data })
-    .catch((err) => { if (type !== 'state') toast(err.message); });
+    .catch((err) => { if (type !== 'state' && type !== 'signal') toast(err.message); });
 }
 
 /* ---------- invite link ---------- */
@@ -89,6 +89,7 @@ function roomJoin(id, name) {
 }
 function roomTeardown(message) {
   const wasGuest = roomIsGuest();
+  voiceLeave(true);
   Room.es?.close(); Room.es = null;
   clearTimeout(Room.retry); clearInterval(Room.beat);
   Room.id = null; Room.isHost = false; Room.hostToken = null; Room.state = null; Room.members = []; Room.chat = [];
@@ -128,15 +129,17 @@ function roomConnect() {
     clearInterval(Room.beat);
     Room.beat = setInterval(roomHeartbeat, Room.isHost ? 5000 : 2500);
     roomRenderAll();
+    voiceOnHello();
   });
   on('state', (d) => { if (!Room.isHost) roomApply(d.state, d.now); });
-  on('members', (m) => { Room.members = m; roomRenderMembers(); roomRenderStatus(); });
+  on('members', (m) => { Room.members = m; roomRenderMembers(); roomRenderStatus(); voiceOnMembers(); });
+  on('signal', (d) => voiceOnSignal(d.from, d.data));
   on('settings', (s) => { Room.settings = s; roomRenderAll(); });
   on('chat', (m) => {
     Room.chat.push(m); if (Room.chat.length > 60) Room.chat.shift();
     roomRenderChat();
     const roomTabOpen = !$('[data-tab="room"].tab-body').hidden && (!isPhoneLayout() || $('#panel').classList.contains('open'));
-    if (m.from !== Room.client && !roomTabOpen) { Room.unread++; roomRenderStatus(); toast(`${m.name}: ${m.text}`, 4000); }
+    if (m.from !== Room.client && !m.system && !roomTabOpen) { Room.unread++; roomRenderStatus(); toast(`${m.name}: ${m.text}`, 4000); }
   });
   on('notice', (n) => toast(n.text, 2500));
   on('cmd', (c) => { if (Room.isHost) roomHandleCmd(c); });
@@ -160,6 +163,7 @@ const roomTrack = (t) => (t ? {
   src: t.src === 'sp' ? 'sp' : undefined, id: t.id,
   title: t.title || meta[t.id]?.t || '', artist: t.artist || meta[t.id]?.a || '',
   art: t.src === 'sp' ? t.art : undefined, dur: t.dur || undefined,
+  addedBy: t.addedBy || undefined,
 } : null);
 function roomNotify(now) {
   if (!roomIsHost()) return;
@@ -195,6 +199,14 @@ function roomCleanTracks(list) {
     art: isSpArt(t?.art) ? t.art : undefined, dur: Number(t?.dur) || undefined,
   })).filter(validTrack);
 }
+function roomCleanAdded(list) {
+  return (Array.isArray(list) ? list.slice(0, 300) : []).map((t) => ({
+    src: t?.src === 'sp' ? 'sp' : undefined, id: String(t?.id || ''),
+    title: String(t?.title || '').slice(0, 200), artist: String(t?.artist || '').slice(0, 200),
+    art: isSpArt(t?.art) ? t.art : undefined, dur: Number(t?.dur) || undefined,
+    addedBy: t?.addedBy ? String(t.addedBy).slice(0, 30) : undefined,
+  })).filter(validTrack);
+}
 function roomHandleCmd(c) {
   const who = String(c.name || 'A listener').slice(0, 30);
   const find = () => (S.queue[c.index]?.id === c.id ? c.index : S.queue.findIndex((t) => t.id === c.id));
@@ -208,11 +220,13 @@ function roomHandleCmd(c) {
     case 'index': { const i = find(); if (i >= 0) playIndex(i); break; }
     case 'remove': { const i = find(); if (i >= 0) removeAt(i); break; }
     case 'add': case 'replace': {
-      const tracks = roomCleanTracks(c.tracks);
+      const tracks = roomCleanTracks(c.tracks).map((t) => ({ ...t, addedBy: who }));
       if (!tracks.length) break;
-      if (c.action === 'replace') setQueue(tracks, Math.max(0, Math.min(Number(c.start) || 0, tracks.length - 1)));
-      else enqueue(tracks, { playNow: !!c.playNow });
-      toast(`${who} ${c.action === 'replace' ? 'started' : 'added'} ${tracks.length === 1 ? `"${tracks[0].title || 'a song'}"` : `${tracks.length} songs`}`);
+      const what = tracks.length === 1 ? `"${tracks[0].title || 'a song'}"` : `${tracks.length} songs`;
+      if (c.action === 'replace' && Room.settings.allowControl) setQueue(tracks, Math.max(0, Math.min(Number(c.start) || 0, tracks.length - 1)));
+      else enqueue(tracks, { playNow: !!c.playNow && Room.settings.allowControl });
+      toast(`${who} added ${what} to the queue`);
+      roomSend('chat', { text: `🎵 ${who} added ${what}`, system: true });
       return;
     }
     default: return;
@@ -303,7 +317,19 @@ function roomIntercept(action, payload = {}) {
     }
     return true;
   }
-  if (!Room.settings.allowControl) { toast("Only the host controls playback in this room. You can still change your own volume."); return true; }
+  if (action === 'add' || action === 'replace') {
+    if (!Room.settings.allowControl) {
+      if (Room.settings.allowAdd === false) { toast("The host isn't taking song requests right now."); return true; }
+      // Requests always join the end of the queue and wait their turn.
+      const tracks = (payload.tracks || []).slice(0, 300).map(roomTrack);
+      if (!tracks.length) return true;
+      const ahead = Math.max(0, S.queue.length - S.index - 1);
+      roomSend('cmd', { action: 'add', tracks, playNow: false });
+      toast(`Added to the room queue${ahead ? `: it plays after ${ahead} more song${ahead === 1 ? '' : 's'}` : ', up next'}`, 3500);
+      return true;
+    }
+  }
+  if (!Room.settings.allowControl) { toast("Only the host controls playback in this room. You can still add songs and change your own volume."); return true; }
   if (action === 'toggle') Room.localPause = false;
   if (action === 'index' || action === 'remove') {
     const t = S.queue[payload.i];
@@ -332,7 +358,7 @@ function roomRenderStatus() {
   pill.classList.toggle('unread', Room.unread > 0);
 }
 function roomRenderAll() {
-  roomRenderStatus(); roomRenderHeader(); roomRenderMembers(); roomRenderChat();
+  roomRenderStatus(); roomRenderHeader(); roomRenderMembers(); roomRenderChat(); renderVoice();
 }
 function roomRenderHeader() {
   const box = $('#roomHead');
@@ -354,13 +380,18 @@ function roomRenderHeader() {
       input.addEventListener('change', () => roomSend('settings', { [key]: input.checked }));
       return h('label', { class: 'switch' }, input, h('span', { text: label }));
     };
+    const on = (key, dflt) => (Room.settings[key] === undefined ? dflt : Room.settings[key]);
+    Room.settings.allowAdd = on('allowAdd', true);
     box.append(h('div', { class: 'room-switches' },
-      sw('Let listeners control playback and add songs', 'allowControl'),
+      sw('Listeners can add songs to the queue', 'allowAdd'),
+      sw('Listeners can also skip, pause and seek', 'allowControl'),
       sw('Lock room (no new people can join)', 'locked')));
   } else {
     box.append(h('p', { class: 'hint', text: Room.settings.allowControl
       ? 'Everyone here can control playback and add songs.'
-      : 'The host picks the music. Play/pause only affects your device.' }));
+      : Room.settings.allowAdd !== false
+        ? 'Add songs from Library or Search and they join the queue. Play/pause only affects your device.'
+        : 'The host picks the music. Play/pause only affects your device.' }));
   }
   box.append(h('p', { class: 'hint room-hint', id: 'roomHint', hidden: true }));
 }
@@ -370,14 +401,18 @@ function roomRenderMembers() {
   box.replaceChildren();
   for (const m of Room.members) {
     const initial = (m.name || '?').trim().charAt(0).toUpperCase();
-    box.append(h('div', { class: 'member' + (m.online ? '' : ' away') },
+    const v = m.voice;
+    box.append(h('div', { class: 'member' + (m.online ? '' : ' away') + (v ? ' in-voice' : '') + (v && (v.muted || !v.mic) ? ' voice-muted' : ''), 'data-id': m.id,
+      title: v ? (v.mic ? (v.muted ? `${m.name} is muted` : `${m.name} is in voice`) : `${m.name} is listening to voice`) : m.name },
       h('span', { class: 'avatar', text: initial }),
+      v ? h('span', { class: 'member-mic' }, icon(v.mic && !v.muted ? 'mic' : 'mic-off')) : null,
       h('span', { class: 'member-name', text: m.name + (m.id === Room.client ? ' (you)' : '') }),
       m.host ? h('span', { class: 'pill', text: 'host' }) : null,
       Room.isHost && !m.host ? iconBtn('close', `Remove ${m.name}`, () => {
         if (confirm(`Remove ${m.name} from the room?`)) roomSend('kick', { client: m.id });
       }) : null));
   }
+  voicePaintMembers();
 }
 function roomRenderChat() {
   const log = $('#roomChat');
@@ -386,6 +421,7 @@ function roomRenderChat() {
   log.replaceChildren();
   if (!Room.chat.length) log.append(h('div', { class: 'chat-empty', text: 'Say hi 👋' }));
   for (const m of Room.chat) {
+    if (m.system) { log.append(h('div', { class: 'msg-system', text: m.text })); continue; }
     log.append(h('div', { class: 'msg' + (m.from === Room.client ? ' mine' : '') },
       h('span', { class: 'msg-name', text: m.name }), h('span', { class: 'msg-text', text: m.text })));
   }
@@ -456,7 +492,7 @@ function roomInviteBody() {
 
   let reach;
   if (Room.share.url) reach = 'Anyone with this link can join from anywhere while Vinyl is running on this PC.';
-  else if (Room.lanBase) reach = 'This link works for people on the same Wi-Fi as this PC.';
+  else if (Room.lanBase) reach = 'This link works for people on the same Wi-Fi as this PC. They can listen to voice chat but need the secure internet link below to talk.';
   else reach = 'Anyone who can open this Vinyl address can join with the link.';
   wrap.append(h('div', { class: 'invite-top' }, qrBox, h('div', { class: 'invite-link' }, link, row)), h('p', { class: 'hint', text: reach }));
 
@@ -516,6 +552,7 @@ function roomBoot() {
   Room.client = roomClientId();
   $('#btnRoom').addEventListener('click', roomTopButton);
   $('#roomPill').addEventListener('click', roomTopButton);
+  $('#btnMic').addEventListener('click', voiceToggleMute);
   $('#btnCloseRoomDialog').addEventListener('click', () => $('#roomDialog').close());
   $('#roomChatForm').addEventListener('submit', (e) => {
     e.preventDefault();

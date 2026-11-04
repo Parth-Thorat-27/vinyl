@@ -75,7 +75,7 @@ const rooms = new Map(); // id -> room
 const MAX_ROOMS = 50, MAX_MEMBERS = 30, HOST_GRACE_MS = 3 * 60 * 1000;
 
 function memberList(room) {
-  return [...room.members.values()].map((m) => ({ id: m.id, name: m.name, host: m.id === room.hostClient, online: m.streams.size > 0 }))
+  return [...room.members.values()].map((m) => ({ id: m.id, name: m.name, host: m.id === room.hostClient, online: m.streams.size > 0, voice: m.voice || null }))
     .filter((m) => m.online || m.host);
 }
 function emit(m, event, data) {
@@ -91,7 +91,7 @@ function closeRoom(room, reason) {
   clearTimeout(room.hostTimer);
   rooms.delete(room.id);
 }
-function settingsOf(room) { return { name: room.name, locked: room.locked, allowControl: room.allowControl }; }
+function settingsOf(room) { return { name: room.name, locked: room.locked, allowControl: room.allowControl, allowAdd: room.allowAdd }; }
 
 async function handleRooms(req, res, parts) {
   // POST /api/rooms  -> create
@@ -101,7 +101,7 @@ async function handleRooms(req, res, parts) {
     const room = {
       id: rid(16), hostToken: rid(24), hostClient: clean(body.client, 40) || rid(8),
       name: clean(body.name, 60) || 'Listening room',
-      locked: false, allowControl: false, state: null, chat: [], members: new Map(), banned: new Set(), hostTimer: null,
+      locked: false, allowControl: false, allowAdd: true, state: null, chat: [], members: new Map(), banned: new Set(), hostTimer: null,
     };
     rooms.set(room.id, room);
     // Close rooms whose host never connects.
@@ -150,6 +150,7 @@ async function handleRooms(req, res, parts) {
       clearInterval(ping);
       m.streams.delete(res);
       if (!rooms.has(room.id) || m.streams.size) return;
+      m.voice = null; // voice connections die with the stream; the client re-announces when it's back
       broadcast(room, 'members', memberList(room));
       if (client === room.hostClient) {
         // Give the host a few minutes to come back (page reload, flaky Wi-Fi).
@@ -185,22 +186,36 @@ async function handleRooms(req, res, parts) {
       case 'chat': {
         const text = clean(data.text, 500);
         if (!text) break;
-        const msg = { from: client, name: m.name, text, at: Date.now() };
+        // The host can post neutral room notices (e.g. "Riya added a song").
+        const msg = data.system && isHost ? { from: 'room', name: '', text, at: Date.now(), system: true } : { from: client, name: m.name, text, at: Date.now() };
         room.chat.push(msg); if (room.chat.length > 60) room.chat.shift();
         broadcast(room, 'chat', msg);
         break;
       }
       case 'cmd': // a listener asks the host to do something (only if the host allows it)
-        if (!room.allowControl) return sendJson(res, 403, { error: 'Only the host controls playback.' });
+        if (data.action === 'add' ? !(room.allowAdd || room.allowControl) : !room.allowControl) {
+          return sendJson(res, 403, { error: data.action === 'add' ? "The host isn't taking song requests right now." : 'Only the host controls playback.' });
+        }
         emit(room.members.get(room.hostClient) || { streams: new Set() }, 'cmd', { from: client, name: m.name, ...data });
         break;
       case 'settings':
         if (!isHost) return sendJson(res, 403, { error: 'Only the host can do that.' });
         if (typeof data.locked === 'boolean') room.locked = data.locked;
         if (typeof data.allowControl === 'boolean') room.allowControl = data.allowControl;
+        if (typeof data.allowAdd === 'boolean') room.allowAdd = data.allowAdd;
         if (data.name) room.name = clean(data.name, 60);
         broadcast(room, 'settings', settingsOf(room));
         break;
+      case 'voice': // joined / left / muted in voice chat
+        m.voice = data.on ? { mic: !!data.mic, muted: !!data.muted } : null;
+        broadcast(room, 'members', memberList(room));
+        break;
+      case 'signal': { // WebRTC offer/answer/ICE for one other member; the audio itself goes peer-to-peer
+        const target = room.members.get(clean(data.to, 40));
+        if (!target || target.id === client) return sendJson(res, 404, { error: 'gone' });
+        emit(target, 'signal', { from: client, data: data.payload });
+        break;
+      }
       case 'kick': {
         if (!isHost) return sendJson(res, 403, { error: 'Only the host can do that.' });
         const target = room.members.get(clean(data.client, 40));

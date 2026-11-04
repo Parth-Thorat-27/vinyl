@@ -307,10 +307,14 @@ const isCurrent = (E) => eng() === E;
 
 function onPlayerReady() {
   ytReady = true;
-  player.setVolume(S.volume);
+  player.setVolume(musicVolume());
   const t = S.queue[S.index];
   if (!t || t.src === 'sp') return;
-  if (pendingAutoplay != null) { const a = pendingAutoplay; pendingAutoplay = null; playIndex(S.index, a.autoplay, a.start); }
+  if (pendingAutoplay != null) {
+    const a = pendingAutoplay; pendingAutoplay = null;
+    // In a room the player may have loaded long after we joined: start where the room is now.
+    playIndex(S.index, a.autoplay, roomIsGuest() && Room.state ? roomExpected(Room.state) : a.start);
+  }
   else player.cueVideoById({ videoId: t.id, startSeconds: Math.floor(S.pos || 0) });
 }
 function onPlayerState(e) {
@@ -358,6 +362,8 @@ function setPhase(p) {
   }
   deckSync();
   if (was !== p) roomNotify();
+  // A listener's song just started: line it up with the host straight away.
+  if (p === 'playing' && was !== 'playing' && roomIsGuest()) setTimeout(roomCorrectDrift, 800);
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = p === 'playing' ? 'playing' : p === 'paused' ? 'paused' : 'none';
 }
 
@@ -506,9 +512,16 @@ function cycleRepeat() {
   syncToggles(); updateUpNext(); persist(); roomNotify();
   toast({ off: 'Repeat off', all: 'Repeat queue', one: 'Repeat this song' }[S.repeat], 1400);
 }
+// Voice chat can dip the music (voice.js) without touching the volume you chose.
+let musicDuck = 1;
+const musicVolume = () => Math.round(S.volume * musicDuck);
+function setMusicDuck(f) {
+  musicDuck = f;
+  if (!S.muted) { YTE.volume(musicVolume()); SPE.volume(musicVolume()); }
+}
 function setVolume(v) {
   S.volume = Math.max(0, Math.min(100, Math.round(v)));
-  YTE.volume(S.volume); SPE.volume(S.volume);
+  YTE.volume(musicVolume()); SPE.volume(musicVolume());
   if (S.muted && S.volume > 0) toggleMute(false);
   setRange($('#vol'), S.volume, 100); knobRender(); persist();
 }
@@ -583,6 +596,8 @@ setInterval(() => {
 }, 250);
 
 /* ---------- list rendering ---------- */
+// "Artist · added by Riya" for songs someone requested in a listening room.
+const artistLine = (t) => [trackArtist(t), t.addedBy ? `added by ${t.addedBy}` : ''].filter(Boolean).join(' · ');
 function trackRow(t, { current = false, onClick, actions = [], sub } = {}) {
   const sp = t.src === 'sp', art = artUrl(t);
   const row = h('div', { class: 'row' + (current ? ' current' : '') + (sp ? ' sp' : ''), role: 'button', tabindex: '0', 'data-vid': sp ? null : t.id },
@@ -591,7 +606,7 @@ function trackRow(t, { current = false, onClick, actions = [], sub } = {}) {
       current ? h('div', { class: 'eq' }, h('i'), h('i'), h('i')) : null),
     h('div', { class: 'row-text' },
       h('div', { class: 't', text: trackTitle(t) }),
-      h('div', { class: 'a', text: sub ?? trackArtist(t) })),
+      h('div', { class: 'a', text: sub ?? artistLine(t) })),
     h('div', { class: 'actions' }, actions));
   row.addEventListener('click', () => onClick?.());
   row.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target === row) onClick?.(); });

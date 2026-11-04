@@ -550,8 +550,10 @@ body[data-phase="playing"] .eq i { animation-play-state: running; }
   display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; margin-right: 4px; border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 16%, var(--bg)); color: var(--text);
   font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-  position: relative;
+  position: relative; white-space: nowrap; flex: none;
 }
+/* In a room the top bar gets busy (badge + mic), so the wordmark steps aside in the narrow sidebar. */
+@media (min-width: 960px) { body.in-room .brand-word { display: none; } }
 .room-pill.unread::after { content: ''; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff5a5f; flex: none; animation: blink 1.6s steps(2, jump-none) infinite; }
 body.in-room #btnRoom { color: var(--accent); }
@@ -564,6 +566,35 @@ body.in-room #btnRoom { color: var(--accent); }
 .room-switches { display: flex; flex-direction: column; gap: 2px; }
 .room-switches .switch { font-size: 13.5px; margin: 0; }
 .room-hint { color: var(--accent); }
+
+/* voice chat */
+.voice-card { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.voice-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.voice-top b { font-size: 15px; }
+.voice-top .a { font-size: 13px; color: var(--text-2); margin-top: 1px; }
+.voice-vol { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+.voice-vol .i { width: 18px; height: 18px; }
+.voice-vol .range { flex: 1; height: 18px; }
+.voice-vol .range::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, #4ade80 var(--p), rgb(255 255 255 / .14) var(--p));
+}
+.voice-vol .range::-moz-range-track { height: 4px; border-radius: 2px; background: rgb(255 255 255 / .14); }
+.voice-vol .range::-moz-range-progress { height: 4px; border-radius: 2px; background: #4ade80; }
+.voice-vol .range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+  background: #f4f1ec; box-shadow: 0 1px 4px rgb(0 0 0 / .45);
+}
+.voice-vol .range::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #f4f1ec; }
+.voice-card .switch { font-size: 13.5px; margin: 0; }
+.member { position: relative; transition: box-shadow .15s, border-color .15s; }
+.member.speaking { border-color: #4ade80; box-shadow: 0 0 0 2px rgb(74 222 128 / .45); }
+.member-mic { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: -4px; color: #4ade80; }
+.member-mic .i { width: 15px; height: 15px; }
+.member.voice-muted .member-mic { color: var(--text-3); }
+.mic-btn[aria-pressed="true"] { color: #4ade80; }
+.mic-btn.speaking { box-shadow: 0 0 0 2px rgb(74 222 128 / .55); }
+.msg-system { align-self: center; font-size: 12.5px; color: var(--text-3); padding: 2px 8px; text-align: center; }
 
 .members { display: flex; flex-wrap: wrap; gap: 6px; }
 .member { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 13.5px; }
